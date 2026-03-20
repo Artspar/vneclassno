@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
@@ -39,6 +40,7 @@ async function main(): Promise<void> {
         ok: true,
         inviteStatus: invite.status,
         joinRequestStatus: joinRequest.status,
+        store: process.env.APP_STORE ?? 'prisma',
       },
       null,
       2,
@@ -48,10 +50,12 @@ async function main(): Promise<void> {
   await app.close();
 }
 
-try {
-  await main();
-} catch (error) {
-  // eslint-disable-next-line no-console
-  console.error(error);
-  process.exit(1);
-}
+void (async () => {
+  try {
+    await main();
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error(error);
+    process.exit(1);
+  }
+})();

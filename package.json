@@ -10,6 +10,7 @@
   "scripts": {
     "build": "npm run --workspaces build",
     "dev": "npm run --workspaces dev",
+    "dev:test": "npm run dev:test -w @vneclassno/backend",
     "lint": "npm run --workspaces lint",
     "typecheck": "npm run --workspaces typecheck",
     "test": "npm run --workspaces test"

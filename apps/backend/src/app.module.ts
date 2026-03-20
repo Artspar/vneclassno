@@ -4,25 +4,36 @@ import { TokenService } from './auth/token-service.js';
 import { ParentContextService } from './context/parent-context-service.js';
 import { AuthController } from './http/auth.controller.js';
 import { ContextController } from './http/context.controller.js';
+import { HealthController } from './http/health.controller.js';
 import { InvitesController } from './http/invites.controller.js';
 import { TelegramController } from './http/telegram.controller.js';
 import { InviteService } from './invites/invite-service.js';
 import { PrismaService } from './prisma/prisma.service.js';
 import { type IdentityStore } from './repositories/identity-store.js';
+import { InMemoryIdentityStore } from './repositories/in-memory-identity-store.js';
 import { PrismaIdentityStore } from './repositories/prisma-identity-store.js';
 import { RbacService } from './rbac/rbac-service.js';
 import { TelegramBotService } from './telegram/telegram-bot.service.js';
 import { IDENTITY_STORE } from './tokens.js';
 
 @Module({
-  controllers: [AuthController, ContextController, InvitesController, TelegramController],
+  controllers: [AuthController, ContextController, HealthController, InvitesController, TelegramController],
   providers: [
     PrismaService,
     PrismaIdentityStore,
     TelegramBotService,
     {
       provide: IDENTITY_STORE,
-      useExisting: PrismaIdentityStore,
+      inject: [PrismaIdentityStore],
+      useFactory: async (prismaStore: PrismaIdentityStore): Promise<IdentityStore> => {
+        if ((process.env.APP_STORE ?? 'prisma') === 'inmemory') {
+          const inMemoryStore = new InMemoryIdentityStore();
+          await inMemoryStore.seedDemoData();
+          return inMemoryStore;
+        }
+
+        return prismaStore;
+      },
     },
     {
       provide: TokenService,

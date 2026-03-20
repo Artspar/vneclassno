@@ -12,9 +12,9 @@ Implemented scope (Stage 4):
 - Invite onboarding service for Telegram/PWA single-link flow
 - Telegram webhook handling for `/start invite_<token>`
 
-## Run
+## Run (PostgreSQL mode)
 
-1. Set `DATABASE_URL` and other envs from `apps/backend/.env.example`.
+1. Set envs from `apps/backend/.env.example`.
 2. Generate Prisma client:
 - `npm run prisma:generate -w @vneclassno/backend`
 3. Apply migrations:
@@ -24,8 +24,16 @@ Implemented scope (Stage 4):
 5. Start API:
 - `npm run dev -w @vneclassno/backend`
 
+## Run (Test mode without DB)
+
+1. Start API in in-memory mode:
+- `npm run dev:test -w @vneclassno/backend`
+2. Check:
+- `curl -sS http://localhost:3000/health`
+
 ## Implemented Endpoints
 
+- `GET /health`
 - `POST /auth/telegram`
 - `POST /auth/pwa/login`
 - `POST /auth/refresh`
