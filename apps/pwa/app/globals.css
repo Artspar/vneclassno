@@ -21,7 +21,7 @@ body {
   padding: 0;
   background: radial-gradient(circle at 20% 0%, #e9f1ff, var(--bg) 55%);
   color: var(--text);
-  font-family: "SF Pro Text", "Segoe UI", sans-serif;
+  font-family: 'SF Pro Text', 'Segoe UI', sans-serif;
 }
 
 a {
@@ -103,4 +103,8 @@ p {
 .success {
   color: var(--ok);
   font-size: 14px;
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
 }

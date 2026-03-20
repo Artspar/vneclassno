@@ -27,6 +27,14 @@ export type MeContextResponse = {
   }>;
 };
 
+export type CreatedInvite = {
+  token: string;
+  sectionId: string;
+  pwaInviteUrl: string;
+  telegramStartAppUrl?: string;
+  telegramMiniAppUrl: string;
+};
+
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3000';
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -59,6 +67,23 @@ export function loginPwa(phone: string, otpCode: string): Promise<AuthResponse> 
   return request<AuthResponse>('/auth/pwa/login', {
     method: 'POST',
     body: JSON.stringify({ phone, otpCode }),
+  });
+}
+
+export function loginTelegram(initData: string): Promise<AuthResponse> {
+  return request<AuthResponse>('/auth/telegram', {
+    method: 'POST',
+    body: JSON.stringify({ initData }),
+  });
+}
+
+export function createInvite(accessToken: string, sectionId: string): Promise<CreatedInvite> {
+  return request<CreatedInvite>('/invites', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ sectionId }),
   });
 }
 

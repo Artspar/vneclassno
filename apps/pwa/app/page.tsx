@@ -9,7 +9,7 @@ export default function HomePage() {
         <p className="caption">
           Открой ссылку инвайта вида <code>/invite/&lt;token&gt;</code>, чтобы добавить ребенка в секцию.
         </p>
-        <Link href="/invite/demo-token">Пример страницы инвайта</Link>
+        <Link href="/demo">Открыть UI Test Lab (без терминала)</Link>
       </div>
     </main>
   );
