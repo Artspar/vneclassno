@@ -1,0 +1,960 @@
+openapi: 3.1.0
+info:
+  title: Kids Activities Platform API
+  version: 1.0.0
+  description: MVP API for section admins, coaches, and parents across Telegram and PWA.
+servers:
+  - url: https://api.example.com
+security:
+  - bearerAuth: []
+tags:
+  - name: Auth
+  - name: Context
+  - name: Sessions
+  - name: Attendance
+  - name: Absence
+  - name: Subscriptions
+  - name: Payments
+  - name: Notifications
+  - name: Invites
+paths:
+  /auth/telegram:
+    post:
+      tags: [Auth]
+      summary: Login via Telegram Mini App init data
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [initData]
+              properties:
+                initData:
+                  type: string
+      responses:
+        '200':
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokens'
+
+  /auth/pwa/login:
+    post:
+      tags: [Auth]
+      summary: One-time login by OTP or magic-link token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                phone:
+                  type: string
+                otpCode:
+                  type: string
+                magicToken:
+                  type: string
+      responses:
+        '200':
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokens'
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh access token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        '200':
+          description: New access token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokens'
+
+  /invites:
+    post:
+      tags: [Invites]
+      summary: Create invite link for section onboarding
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sectionId]
+              properties:
+                sectionId:
+                  type: string
+                  format: uuid
+                allowParentReshare:
+                  type: boolean
+                  default: false
+                expiresAt:
+                  type: string
+                  format: date-time
+                  nullable: true
+      responses:
+        '201':
+          description: Invite created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invite'
+
+  /invites/{token}:
+    get:
+      tags: [Invites]
+      summary: Resolve invite token and return onboarding state
+      security: []
+      parameters:
+        - in: path
+          name: token
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Invite details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InviteResolveResponse'
+
+  /invites/{token}/accept:
+    post:
+      tags: [Invites]
+      summary: Accept invite by selecting existing child or creating new child
+      parameters:
+        - in: path
+          name: token
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                childId:
+                  type: string
+                  format: uuid
+                newChild:
+                  $ref: '#/components/schemas/ChildCreateInput'
+              oneOf:
+                - required: [childId]
+                - required: [newChild]
+      responses:
+        '200':
+          description: Join request created or auto-accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JoinRequest'
+
+  /join-requests/{requestId}/decision:
+    post:
+      tags: [Invites]
+      summary: Approve or reject join request for section
+      parameters:
+        - in: path
+          name: requestId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision]
+              properties:
+                decision:
+                  type: string
+                  enum: [approved, rejected]
+                comment:
+                  type: string
+      responses:
+        '200':
+          description: Join request updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JoinRequest'
+
+  /me/context:
+    get:
+      tags: [Context]
+      summary: Get user profile and available context (roles, children, sections)
+      responses:
+        '200':
+          description: Context
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeContext'
+
+  /context/select:
+    post:
+      tags: [Context]
+      summary: Set active child and active section for parent context
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                activeChildId:
+                  type: string
+                  format: uuid
+                activeSectionId:
+                  type: string
+                  format: uuid
+                  nullable: true
+      responses:
+        '200':
+          description: Context updated
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
+
+  /sessions:
+    get:
+      tags: [Sessions]
+      summary: List sessions by filters
+      parameters:
+        - in: query
+          name: sectionId
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: groupId
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: childId
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: from
+          schema:
+            type: string
+            format: date-time
+        - in: query
+          name: to
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Session list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Session'
+
+    post:
+      tags: [Sessions]
+      summary: Create session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionCreate'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+
+  /attendance/bulk-update:
+    post:
+      tags: [Attendance]
+      summary: Fast bulk attendance update for one session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sessionId, updates]
+              properties:
+                sessionId:
+                  type: string
+                  format: uuid
+                updates:
+                  type: array
+                  items:
+                    type: object
+                    required: [childId, status]
+                    properties:
+                      childId:
+                        type: string
+                        format: uuid
+                      status:
+                        $ref: '#/components/schemas/AttendanceStatus'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
+
+  /absence/request:
+    post:
+      tags: [Absence]
+      summary: Create absence request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sessionId, childId]
+              properties:
+                sessionId:
+                  type: string
+                  format: uuid
+                childId:
+                  type: string
+                  format: uuid
+                reason:
+                  type: string
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AbsenceRequest'
+
+  /absence/{absenceId}/decision:
+    post:
+      tags: [Absence]
+      summary: Approve or reject absence request
+      parameters:
+        - in: path
+          name: absenceId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision]
+              properties:
+                decision:
+                  type: string
+                  enum: [approved, rejected]
+                comment:
+                  type: string
+      responses:
+        '200':
+          description: Decision applied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AbsenceRequest'
+
+  /subscriptions:
+    get:
+      tags: [Subscriptions]
+      summary: Get subscriptions by child or section
+      parameters:
+        - in: query
+          name: childId
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: sectionId
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Subscription list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Subscription'
+
+    post:
+      tags: [Subscriptions]
+      summary: Create subscription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubscriptionCreate'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+
+  /payments/create:
+    post:
+      tags: [Payments]
+      summary: Create payment intent or manual payment request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [childId, sectionId, amount, method]
+              properties:
+                childId:
+                  type: string
+                  format: uuid
+                sectionId:
+                  type: string
+                  format: uuid
+                amount:
+                  type: number
+                  format: double
+                method:
+                  $ref: '#/components/schemas/PaymentMethod'
+                proofFileId:
+                  type: string
+                  format: uuid
+                  nullable: true
+      responses:
+        '201':
+          description: Payment created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+
+  /payments/{paymentId}/manual-confirm:
+    post:
+      tags: [Payments]
+      summary: Confirm or reject manual transfer
+      parameters:
+        - in: path
+          name: paymentId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision]
+              properties:
+                decision:
+                  type: string
+                  enum: [confirmed, rejected]
+                comment:
+                  type: string
+      responses:
+        '200':
+          description: Payment updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+
+  /payments/webhook/sbp:
+    post:
+      tags: [Payments]
+      summary: SBP provider webhook for auto_link and auto_qr
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
+
+  /notifications/send:
+    post:
+      tags: [Notifications]
+      summary: Create and dispatch notification to Telegram and PWA
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationCreate'
+      responses:
+        '202':
+          description: Queued
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [notificationId]
+                properties:
+                  notificationId:
+                    type: string
+                    format: uuid
+
+  /notifications/feed:
+    get:
+      tags: [Notifications]
+      summary: Notification history for current user
+      responses:
+        '200':
+          description: Feed
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Notification'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Invite:
+      type: object
+      required: [id, sectionId, token, status, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        sectionId:
+          type: string
+          format: uuid
+        token:
+          type: string
+        status:
+          type: string
+          enum: [active, expired, revoked]
+        allowParentReshare:
+          type: boolean
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    InviteResolveResponse:
+      type: object
+      required: [invite, authRequired]
+      properties:
+        invite:
+          $ref: '#/components/schemas/Invite'
+        authRequired:
+          type: boolean
+        suggestedClient:
+          type: string
+          enum: [telegram, pwa]
+          nullable: true
+
+    ChildCreateInput:
+      type: object
+      required: [firstName, lastName]
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        birthDate:
+          type: string
+          format: date
+          nullable: true
+
+    JoinRequest:
+      type: object
+      required: [id, sectionId, childId, status, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        sectionId:
+          type: string
+          format: uuid
+        childId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, approved, rejected, auto_approved]
+        createdByUserId:
+          type: string
+          format: uuid
+        decidedByUserId:
+          type: string
+          format: uuid
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        decidedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    AuthTokens:
+      type: object
+      required: [accessToken, refreshToken, expiresIn]
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        expiresIn:
+          type: integer
+          description: Access token TTL in seconds
+
+    MeContext:
+      type: object
+      required: [userId, roles, children, sections]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        roles:
+          type: array
+          items:
+            type: string
+            enum: [super_admin, section_admin, coach, parent]
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChildRef'
+        sections:
+          type: array
+          items:
+            $ref: '#/components/schemas/SectionRef'
+
+    ChildRef:
+      type: object
+      required: [id, firstName, lastName]
+      properties:
+        id:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+
+    SectionRef:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+
+    Session:
+      type: object
+      required: [id, sectionId, groupId, coachUserId, type, startsAt, endsAt, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        sectionId:
+          type: string
+          format: uuid
+        groupId:
+          type: string
+          format: uuid
+        coachUserId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [training, game, event, trial, extra]
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [scheduled, started, finished, cancelled]
+
+    SessionCreate:
+      type: object
+      required: [sectionId, groupId, coachUserId, type, startsAt, endsAt]
+      properties:
+        sectionId:
+          type: string
+          format: uuid
+        groupId:
+          type: string
+          format: uuid
+        coachUserId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [training, game, event, trial, extra]
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+        location:
+          type: string
+        notes:
+          type: string
+
+    AttendanceStatus:
+      type: string
+      enum: [expected, present, late, absent]
+
+    AbsenceRequest:
+      type: object
+      required: [id, sessionId, childId, status, requestedByUserId]
+      properties:
+        id:
+          type: string
+          format: uuid
+        sessionId:
+          type: string
+          format: uuid
+        childId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, approved, rejected]
+        reason:
+          type: string
+        requestedByUserId:
+          type: string
+          format: uuid
+        decisionByUserId:
+          type: string
+          format: uuid
+          nullable: true
+        decisionAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    Subscription:
+      type: object
+      required: [id, childId, sectionId, type, totalUnits, remainingUnits, validFrom, validTo, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        childId:
+          type: string
+          format: uuid
+        sectionId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [by_sessions, by_time]
+        totalUnits:
+          type: integer
+        remainingUnits:
+          type: integer
+        validFrom:
+          type: string
+          format: date
+        validTo:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [active, expired, frozen, closed]
+
+    SubscriptionCreate:
+      type: object
+      required: [childId, sectionId, type, totalUnits, validFrom, validTo]
+      properties:
+        childId:
+          type: string
+          format: uuid
+        sectionId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [by_sessions, by_time]
+        totalUnits:
+          type: integer
+        validFrom:
+          type: string
+          format: date
+        validTo:
+          type: string
+          format: date
+
+    PaymentMethod:
+      type: string
+      enum: [auto_link, auto_qr, manual_transfer]
+
+    Payment:
+      type: object
+      required: [id, childId, sectionId, amount, method, status, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        childId:
+          type: string
+          format: uuid
+        sectionId:
+          type: string
+          format: uuid
+        amount:
+          type: number
+          format: double
+        currency:
+          type: string
+          default: RUB
+        method:
+          $ref: '#/components/schemas/PaymentMethod'
+        status:
+          type: string
+          enum: [created, pending_confirmation, paid, rejected, cancelled]
+        paymentUrl:
+          type: string
+          nullable: true
+        paymentQrPayload:
+          type: string
+          nullable: true
+        proofFileId:
+          type: string
+          format: uuid
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    Notification:
+      type: object
+      required: [id, type, title, body, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [session_reminder, schedule_change, event_announce, payment_update, absence_decision]
+        title:
+          type: string
+        body:
+          type: string
+        payload:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+
+    NotificationCreate:
+      type: object
+      required: [sectionId, type, title, body]
+      properties:
+        sectionId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [session_reminder, schedule_change, event_announce, payment_update, absence_decision]
+        title:
+          type: string
+        body:
+          type: string
+        recipientUserIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        scheduledAt:
+          type: string
+          format: date-time
+          nullable: true
+        payload:
+          type: object
+          additionalProperties: true

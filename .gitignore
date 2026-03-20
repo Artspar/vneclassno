@@ -1,0 +1,15 @@
+node_modules
+.DS_Store
+dist
+build
+.turbo
+.next
+coverage
+*.log
+.env
+.env.local
+.env.*.local
+
+railway.env
+vercel.pwa.env
+vercel.telegram-miniapp.env

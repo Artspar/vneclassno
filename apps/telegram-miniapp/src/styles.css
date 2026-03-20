@@ -1,0 +1,111 @@
+:root {
+  color-scheme: light;
+  --bg: #f2f5fb;
+  --card: #ffffff;
+  --text: #1a2233;
+  --muted: #63708a;
+  --line: #dde4f0;
+  --primary: #0070f3;
+  --primary-dark: #0058be;
+  --danger: #b33530;
+  --success: #1f7a44;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: linear-gradient(180deg, #eaf1ff 0%, var(--bg) 45%);
+  color: var(--text);
+  font-family: "SF Pro Text", "Segoe UI", sans-serif;
+}
+
+.page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.card {
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  padding: 14px;
+  box-shadow: 0 10px 28px rgba(44, 76, 128, 0.08);
+}
+
+.stack {
+  display: grid;
+  gap: 10px;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: 20px;
+}
+
+h2 {
+  font-size: 17px;
+}
+
+.muted {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.badge {
+  display: inline-block;
+  margin-bottom: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: #dde9ff;
+  color: #15408d;
+}
+
+input,
+select,
+button {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  padding: 10px 12px;
+  font-size: 15px;
+}
+
+button {
+  border: 0;
+  color: #fff;
+  background: linear-gradient(180deg, var(--primary), var(--primary-dark));
+}
+
+button.secondary {
+  color: #21385f;
+  background: #ecf2ff;
+}
+
+button:disabled {
+  opacity: 0.6;
+}
+
+.error,
+.error-inline {
+  color: var(--danger);
+}
+
+.success {
+  color: var(--success);
+}
+
+.error-inline {
+  font-size: 13px;
+}

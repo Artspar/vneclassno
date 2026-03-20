@@ -1,0 +1,1 @@
+export const IDENTITY_STORE = 'IDENTITY_STORE';

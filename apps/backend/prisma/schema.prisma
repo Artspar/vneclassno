@@ -1,0 +1,142 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  active
+  blocked
+}
+
+enum UserRole {
+  super_admin
+  section_admin
+  coach
+  parent
+}
+
+enum InviteStatus {
+  active
+  expired
+  revoked
+}
+
+enum JoinRequestStatus {
+  pending
+  approved
+  rejected
+  auto_approved
+}
+
+model User {
+  id              String           @id @default(uuid())
+  phone           String?          @unique
+  telegramId      String?          @unique
+  firstName       String
+  lastName        String?
+  status          UserStatus       @default(active)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  roles           RoleAssignment[]
+  parentLinks     ParentChild[]    @relation("ParentToChild")
+  contexts        ParentContext[]
+  invitesCreated  Invite[]         @relation("InviteCreator")
+  joinCreated     JoinRequest[]    @relation("JoinRequestCreator")
+  joinDecided     JoinRequest[]    @relation("JoinRequestDecider")
+}
+
+model RoleAssignment {
+  id        String   @id @default(uuid())
+  userId    String
+  role      UserRole
+  sectionId String?
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  section   Section? @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, role, sectionId])
+}
+
+model Section {
+  id                       String           @id
+  name                     String
+  autoAcceptJoinRequests   Boolean          @default(false)
+  allowParentReshareInvites Boolean         @default(false)
+  roles                    RoleAssignment[]
+  childLinks               ChildSection[]
+  invites                  Invite[]
+  joinRequests             JoinRequest[]
+}
+
+model Child {
+  id          String        @id @default(uuid())
+  firstName   String
+  lastName    String
+  birthDate   DateTime?
+  parentLinks ParentChild[] @relation("ChildToParent")
+  sectionLinks ChildSection[]
+  joinRequests JoinRequest[]
+}
+
+model ParentChild {
+  id           String @id @default(uuid())
+  parentUserId String
+  childId       String
+  parent       User   @relation("ParentToChild", fields: [parentUserId], references: [id], onDelete: Cascade)
+  child        Child  @relation("ChildToParent", fields: [childId], references: [id], onDelete: Cascade)
+
+  @@unique([parentUserId, childId])
+}
+
+model ChildSection {
+  id        String @id @default(uuid())
+  childId   String
+  sectionId String
+  child     Child  @relation(fields: [childId], references: [id], onDelete: Cascade)
+  section   Section @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  @@unique([childId, sectionId])
+}
+
+model ParentContext {
+  id              String   @id @default(uuid())
+  parentUserId    String
+  activeChildId   String?
+  activeSectionId String?
+  updatedAt       DateTime @default(now())
+  parent          User     @relation(fields: [parentUserId], references: [id], onDelete: Cascade)
+
+  @@unique([parentUserId])
+}
+
+model Invite {
+  id                String      @id @default(uuid())
+  sectionId         String
+  token             String      @unique
+  status            InviteStatus @default(active)
+  allowParentReshare Boolean    @default(false)
+  createdByUserId   String
+  expiresAt         DateTime?
+  createdAt         DateTime    @default(now())
+  section           Section     @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  createdBy         User        @relation("InviteCreator", fields: [createdByUserId], references: [id], onDelete: Cascade)
+}
+
+model JoinRequest {
+  id              String            @id @default(uuid())
+  sectionId       String
+  childId         String
+  createdByUserId String
+  status          JoinRequestStatus @default(pending)
+  decidedByUserId String?
+  decidedAt       DateTime?
+  comment         String?
+  createdAt       DateTime          @default(now())
+  section         Section           @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  child           Child             @relation(fields: [childId], references: [id], onDelete: Cascade)
+  createdBy       User              @relation("JoinRequestCreator", fields: [createdByUserId], references: [id], onDelete: Cascade)
+  decidedBy       User?             @relation("JoinRequestDecider", fields: [decidedByUserId], references: [id], onDelete: SetNull)
+}
