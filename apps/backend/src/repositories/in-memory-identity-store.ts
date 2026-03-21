@@ -35,6 +35,36 @@ export class InMemoryIdentityStore implements IdentityStore {
     return this.users.find((user) => user.phone === phone);
   }
 
+  async setUserTelegramId(userId: string, telegramId: string): Promise<User> {
+    const existing = this.users.find((user) => user.telegramId === telegramId && user.id !== userId);
+    if (existing) {
+      throw new Error('Telegram account is already linked to another user');
+    }
+
+    const user = this.users.find((item) => item.id === userId);
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    user.telegramId = telegramId;
+    return user;
+  }
+
+  async setUserPhone(userId: string, phone: string): Promise<User> {
+    const existing = this.users.find((user) => user.phone === phone && user.id !== userId);
+    if (existing) {
+      throw new Error('Phone is already linked to another user');
+    }
+
+    const user = this.users.find((item) => item.id === userId);
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    user.phone = phone;
+    return user;
+  }
+
   async createUser(input: Omit<User, 'id' | 'status'> & Partial<Pick<User, 'status'>>): Promise<User> {
     const user: User = {
       id: randomUUID(),

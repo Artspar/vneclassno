@@ -8,9 +8,11 @@ import { AuthController } from './http/auth.controller.js';
 import { ContextController } from './http/context.controller.js';
 import { HealthController } from './http/health.controller.js';
 import { InvitesController } from './http/invites.controller.js';
+import { LinkingController } from './http/linking.controller.js';
 import { PreferencesController } from './http/preferences.controller.js';
 import { TelegramController } from './http/telegram.controller.js';
 import { InviteService } from './invites/invite-service.js';
+import { AccountLinkService } from './linking/account-link-service.js';
 import { UserPreferencesService } from './preferences/user-preferences-service.js';
 import { PrismaService } from './prisma/prisma.service.js';
 import { type IdentityStore } from './repositories/identity-store.js';
@@ -21,7 +23,7 @@ import { TelegramBotService } from './telegram/telegram-bot.service.js';
 import { IDENTITY_STORE } from './tokens.js';
 
 @Module({
-  controllers: [AuthController, AttendanceController, ContextController, HealthController, InvitesController, PreferencesController, TelegramController],
+  controllers: [AuthController, AttendanceController, ContextController, HealthController, InvitesController, LinkingController, PreferencesController, TelegramController],
   providers: [
     PrismaService,
     PrismaIdentityStore,
@@ -77,6 +79,11 @@ import { IDENTITY_STORE } from './tokens.js';
       provide: UserPreferencesService,
       inject: [IDENTITY_STORE],
       useFactory: (store: IdentityStore) => new UserPreferencesService(store),
+    },
+    {
+      provide: AccountLinkService,
+      inject: [IDENTITY_STORE],
+      useFactory: (store: IdentityStore) => new AccountLinkService(store),
     },
   ],
 })

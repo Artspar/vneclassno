@@ -278,3 +278,12 @@ export function setContextSelection(
     body: JSON.stringify(payload),
   });
 }
+
+export function requestTelegramLink(accessToken: string): Promise<{ startUrl: string; token: string; expiresInSec: number }> {
+  return request<{ startUrl: string; token: string; expiresInSec: number }>('/me/link/telegram/request', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+    },
+  });
+}

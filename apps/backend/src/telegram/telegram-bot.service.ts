@@ -44,6 +44,10 @@ export class TelegramBotService {
     );
   }
 
+  async sendInfo(chatId: number, text: string): Promise<void> {
+    await this.sendMessage(chatId, text);
+  }
+
   private async sendMessage(chatId: number, text: string, replyMarkup?: Record<string, unknown>): Promise<void> {
     if (!this.token) {
       return;

@@ -10,6 +10,7 @@ import {
   meContext,
   requestAbsence,
   resolveInvite,
+  confirmPhoneLink,
   setContextSelection,
   setActiveRole as setActiveRolePreference,
   type AttendanceBoard,
@@ -149,6 +150,9 @@ export function App() {
   const [inviteMode, setInviteMode] = useState<'child' | 'new'>('new');
   const [attendanceBoard, setAttendanceBoard] = useState<AttendanceBoard | null>(null);
   const [attendanceBusy, setAttendanceBusy] = useState(false);
+  const [linkPhone, setLinkPhone] = useState('+79990000001');
+  const [linkOtp, setLinkOtp] = useState('1234');
+  const [linkBusy, setLinkBusy] = useState(false);
 
   useEffect(() => {
     void bootstrap();
@@ -383,6 +387,23 @@ export function App() {
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Не удалось сохранить активного ребенка');
+    }
+  }
+
+  async function handlePhoneLinkConfirm() {
+    if (!accessToken) {
+      return;
+    }
+
+    setLinkBusy(true);
+    setError('');
+    try {
+      await confirmPhoneLink(accessToken, linkPhone, linkOtp);
+      setStatusMessage('Телефон успешно привязан к текущему Telegram аккаунту.');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Не удалось привязать телефон');
+    } finally {
+      setLinkBusy(false);
     }
   }
 
@@ -638,6 +659,14 @@ export function App() {
                 ))}
             </div>
             <p className="muted">Вход выполнен через Telegram.</p>
+            <div className="stack invite-box">
+              <p className="muted">Привязать телефон PWA</p>
+              <input value={linkPhone} onChange={(e) => setLinkPhone(e.target.value)} placeholder="+79990000001" />
+              <input value={linkOtp} onChange={(e) => setLinkOtp(e.target.value)} placeholder="Код (1234)" />
+              <button type="button" disabled={linkBusy} onClick={() => void handlePhoneLinkConfirm()}>
+                {linkBusy ? 'Привязываем...' : 'Привязать телефон'}
+              </button>
+            </div>
           </>
         )}
 

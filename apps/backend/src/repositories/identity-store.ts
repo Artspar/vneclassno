@@ -12,6 +12,8 @@ export interface IdentityStore {
   getUserById(userId: string): Promise<User | undefined>;
   getUserByTelegramId(telegramId: string): Promise<User | undefined>;
   getUserByPhone(phone: string): Promise<User | undefined>;
+  setUserTelegramId(userId: string, telegramId: string): Promise<User>;
+  setUserPhone(userId: string, phone: string): Promise<User>;
   createUser(input: Omit<User, 'id' | 'status'> & Partial<Pick<User, 'status'>>): Promise<User>;
 
   listRoleAssignments(userId: string): Promise<RoleAssignment[]>;

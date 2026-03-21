@@ -250,3 +250,13 @@ export function setContextSelection(
     body: JSON.stringify(payload),
   });
 }
+
+export function confirmPhoneLink(accessToken: string, phone: string, otpCode: string): Promise<{ ok: true }> {
+  return request<{ ok: true }>('/me/link/phone/confirm', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ phone, otpCode }),
+  });
+}

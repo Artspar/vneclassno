@@ -58,6 +58,38 @@ export class PrismaIdentityStore implements IdentityStore {
       : undefined;
   }
 
+  async setUserTelegramId(userId: string, telegramId: string): Promise<User> {
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: { telegramId },
+    });
+
+    return {
+      id: user.id,
+      firstName: user.firstName,
+      lastName: user.lastName ?? undefined,
+      phone: user.phone ?? undefined,
+      telegramId: user.telegramId ?? undefined,
+      status: user.status,
+    };
+  }
+
+  async setUserPhone(userId: string, phone: string): Promise<User> {
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: { phone },
+    });
+
+    return {
+      id: user.id,
+      firstName: user.firstName,
+      lastName: user.lastName ?? undefined,
+      phone: user.phone ?? undefined,
+      telegramId: user.telegramId ?? undefined,
+      status: user.status,
+    };
+  }
+
   async createUser(input: Omit<User, 'id' | 'status'> & Partial<Pick<User, 'status'>>): Promise<User> {
     const user = await this.prisma.user.create({
       data: {

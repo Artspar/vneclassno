@@ -10,6 +10,7 @@ import {
   getMeContext,
   getPreferences,
   loginPwa,
+  requestTelegramLink,
   requestAbsence,
   setContextSelection,
   setActiveRole as setActiveRolePreference,
@@ -118,6 +119,8 @@ export default function PwaShell() {
   const [activeSectionId, setActiveSectionId] = useState('');
   const [attendanceBoard, setAttendanceBoard] = useState<AttendanceBoard | null>(null);
   const [attendanceBusy, setAttendanceBusy] = useState(false);
+  const [linkBusy, setLinkBusy] = useState(false);
+  const [telegramLinkUrl, setTelegramLinkUrl] = useState('');
 
   useEffect(() => {
     const stored = window.localStorage.getItem(ACCESS_TOKEN_KEY) ?? '';
@@ -310,6 +313,24 @@ export default function PwaShell() {
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Не удалось сохранить активного ребенка');
+    }
+  }
+
+  async function handleTelegramLinkRequest() {
+    if (!accessToken) {
+      return;
+    }
+
+    setLinkBusy(true);
+    setError('');
+    try {
+      const result = await requestTelegramLink(accessToken);
+      setTelegramLinkUrl(result.startUrl);
+      window.open(result.startUrl, '_blank', 'noopener,noreferrer');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Не удалось сформировать ссылку привязки Telegram');
+    } finally {
+      setLinkBusy(false);
     }
   }
 
@@ -552,6 +573,14 @@ export default function PwaShell() {
                 ))}
             </div>
             <p className="caption">Телефон: {phone}</p>
+            <button type="button" disabled={linkBusy} onClick={() => void handleTelegramLinkRequest()}>
+              {linkBusy ? 'Готовим ссылку...' : 'Привязать Telegram'}
+            </button>
+            {telegramLinkUrl && (
+              <a className="link-block" href={telegramLinkUrl} target="_blank" rel="noreferrer">
+                Открыть бота для завершения привязки
+              </a>
+            )}
             <Link href="/demo" className="link-block">
               Открыть UI Test Lab
             </Link>
