@@ -6,10 +6,12 @@ import {
   bulkUpdateAttendance,
   decideAbsence,
   getAttendanceBoard,
+  getContextSelection,
   getMeContext,
   getPreferences,
   loginPwa,
   requestAbsence,
+  setContextSelection,
   setActiveRole as setActiveRolePreference,
   type AttendanceBoard,
   type MeContextResponse,
@@ -143,8 +145,10 @@ export default function PwaShell() {
       setActiveRole(normalizedRole);
       window.localStorage.setItem(ACTIVE_ROLE_KEY, normalizedRole);
 
-      setActiveChildId(nextContext.activeChildId ?? nextContext.children[0]?.id ?? '');
-      setActiveSectionId(nextContext.activeSectionId ?? nextContext.sections[0]?.id ?? '');
+      const selection = await getContextSelection(token).catch(() => ({ activeChildId: undefined, activeSectionId: undefined }));
+
+      setActiveChildId(selection.activeChildId ?? nextContext.activeChildId ?? nextContext.children[0]?.id ?? '');
+      setActiveSectionId(selection.activeSectionId ?? nextContext.activeSectionId ?? nextContext.sections[0]?.id ?? '');
     } catch (e) {
       window.localStorage.removeItem(ACCESS_TOKEN_KEY);
       setAccessToken('');
@@ -275,6 +279,40 @@ export default function PwaShell() {
     }
   }
 
+  async function handleSectionChange(nextSectionId: string) {
+    setActiveSectionId(nextSectionId);
+
+    if (!accessToken) {
+      return;
+    }
+
+    try {
+      await setContextSelection(accessToken, {
+        activeChildId: isCoachView ? undefined : activeChildId || undefined,
+        activeSectionId: nextSectionId || undefined,
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Не удалось сохранить активную секцию');
+    }
+  }
+
+  async function handleChildChange(nextChildId: string) {
+    setActiveChildId(nextChildId);
+
+    if (!accessToken) {
+      return;
+    }
+
+    try {
+      await setContextSelection(accessToken, {
+        activeChildId: nextChildId || undefined,
+        activeSectionId: activeSectionId || undefined,
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Не удалось сохранить активного ребенка');
+    }
+  }
+
   if (!accessToken || !context) {
     return (
       <main className="app-main modern-shell">
@@ -333,7 +371,7 @@ export default function PwaShell() {
           {!isCoachView && (
             <div className="stack">
               <p className="caption">Ребенок</p>
-              <select value={activeChildId} onChange={(e) => setActiveChildId(e.target.value)}>
+              <select value={activeChildId} onChange={(e) => void handleChildChange(e.target.value)}>
                 {context.children.map((child) => (
                   <option key={child.id} value={child.id}>
                     {child.firstName} {child.lastName}
@@ -344,7 +382,7 @@ export default function PwaShell() {
           )}
           <div className="stack">
             <p className="caption">Секция</p>
-            <select value={activeSectionId} onChange={(e) => setActiveSectionId(e.target.value)}>
+            <select value={activeSectionId} onChange={(e) => void handleSectionChange(e.target.value)}>
               {context.sections.map((section) => (
                 <option key={section.id} value={section.id}>
                   {section.name}

@@ -39,6 +39,11 @@ export type PreferencesResponse = {
   activeRole?: 'super_admin' | 'section_admin' | 'coach' | 'parent';
 };
 
+export type ContextSelectionResponse = {
+  activeChildId?: string;
+  activeSectionId?: string;
+};
+
 export type AttendanceBoard = {
   sectionId: string;
   canManage: boolean;
@@ -249,5 +254,27 @@ export function setActiveRole(
       authorization: `Bearer ${accessToken}`,
     },
     body: JSON.stringify({ activeRole }),
+  });
+}
+
+export function getContextSelection(accessToken: string): Promise<ContextSelectionResponse> {
+  return request<ContextSelectionResponse>('/me/preferences/context', {
+    method: 'GET',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+    },
+  });
+}
+
+export function setContextSelection(
+  accessToken: string,
+  payload: { activeChildId?: string; activeSectionId?: string },
+): Promise<ContextSelectionResponse> {
+  return request<ContextSelectionResponse>('/me/preferences/context', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(payload),
   });
 }

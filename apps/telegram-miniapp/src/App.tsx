@@ -4,11 +4,13 @@ import {
   bulkUpdateAttendance,
   decideAbsence,
   getAttendanceBoard,
+  getContextSelection,
   getPreferences,
   loginTelegram,
   meContext,
   requestAbsence,
   resolveInvite,
+  setContextSelection,
   setActiveRole as setActiveRolePreference,
   type AttendanceBoard,
   type MeContext,
@@ -200,8 +202,10 @@ export function App() {
       setActiveRole(normalizedRole);
       window.localStorage.setItem(ACTIVE_ROLE_KEY, normalizedRole);
 
-      setActiveChildId(me.activeChildId ?? me.children[0]?.id ?? '');
-      setActiveSectionId(me.activeSectionId ?? me.sections[0]?.id ?? '');
+      const selection = await getContextSelection(resolvedToken).catch(() => ({ activeChildId: undefined, activeSectionId: undefined }));
+
+      setActiveChildId(selection.activeChildId ?? me.activeChildId ?? me.children[0]?.id ?? '');
+      setActiveSectionId(selection.activeSectionId ?? me.activeSectionId ?? me.sections[0]?.id ?? '');
       setSelectedChildId(me.children[0]?.id ?? '');
       if (me.children.length === 0) {
         setInviteMode('new');
@@ -348,6 +352,40 @@ export function App() {
     }
   }
 
+  async function handleSectionChange(nextSectionId: string) {
+    setActiveSectionId(nextSectionId);
+
+    if (!accessToken) {
+      return;
+    }
+
+    try {
+      await setContextSelection(accessToken, {
+        activeChildId: isCoachView ? undefined : activeChildId || undefined,
+        activeSectionId: nextSectionId || undefined,
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Не удалось сохранить активную секцию');
+    }
+  }
+
+  async function handleChildChange(nextChildId: string) {
+    setActiveChildId(nextChildId);
+
+    if (!accessToken) {
+      return;
+    }
+
+    try {
+      await setContextSelection(accessToken, {
+        activeChildId: nextChildId || undefined,
+        activeSectionId: activeSectionId || undefined,
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Не удалось сохранить активного ребенка');
+    }
+  }
+
   useEffect(() => {
     if (tab !== 'attendance') {
       return;
@@ -396,7 +434,7 @@ export function App() {
           {!isCoachView && (
             <div className="stack">
               <p className="muted">Ребенок</p>
-              <select value={activeChildId} onChange={(e) => setActiveChildId(e.target.value)}>
+              <select value={activeChildId} onChange={(e) => void handleChildChange(e.target.value)}>
                 {context.children.map((child) => (
                   <option key={child.id} value={child.id}>
                     {child.firstName} {child.lastName}
@@ -407,7 +445,7 @@ export function App() {
           )}
           <div className="stack">
             <p className="muted">Секция</p>
-            <select value={activeSectionId} onChange={(e) => setActiveSectionId(e.target.value)}>
+            <select value={activeSectionId} onChange={(e) => void handleSectionChange(e.target.value)}>
               {context.sections.map((section) => (
                 <option key={section.id} value={section.id}>
                   {section.name}

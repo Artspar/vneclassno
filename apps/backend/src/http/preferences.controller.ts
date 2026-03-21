@@ -22,4 +22,22 @@ export class PreferencesController {
     const userId = requireUserId(request, this.tokenService);
     return this.userPreferencesService.setActiveRole(userId, String(body.activeRole ?? ''));
   }
+
+  @Get('context')
+  async getContextSelection(@Req() request: Request) {
+    const userId = requireUserId(request, this.tokenService);
+    return this.userPreferencesService.getContextSelection(userId);
+  }
+
+  @Post('context')
+  async setContextSelection(
+    @Req() request: Request,
+    @Body() body: { activeChildId?: string; activeSectionId?: string },
+  ) {
+    const userId = requireUserId(request, this.tokenService);
+    return this.userPreferencesService.setContextSelection(userId, {
+      activeChildId: body.activeChildId,
+      activeSectionId: body.activeSectionId,
+    });
+  }
 }

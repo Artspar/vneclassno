@@ -3,6 +3,7 @@ import type { Request } from 'express';
 import { TokenService } from '../auth/token-service.js';
 import { requireUserId } from '../common/auth.js';
 import { ParentContextService } from '../context/parent-context-service.js';
+import { UserPreferencesService } from '../preferences/user-preferences-service.js';
 import { IDENTITY_STORE } from '../tokens.js';
 import type { IdentityStore } from '../repositories/identity-store.js';
 
@@ -11,6 +12,7 @@ export class ContextController {
   constructor(
     private readonly tokenService: TokenService,
     private readonly parentContextService: ParentContextService,
+    private readonly userPreferencesService: UserPreferencesService,
     @Inject(IDENTITY_STORE) private readonly identityStore: IdentityStore,
   ) {}
 
@@ -57,14 +59,15 @@ export class ContextController {
     }));
 
     const context = isParent ? await this.parentContextService.getContext(userId) : undefined;
+    const selection = await this.userPreferencesService.getContextSelection(userId);
 
     return {
       userId,
       roles,
       children,
       sections,
-      activeChildId: context?.activeChildId,
-      activeSectionId: context?.activeSectionId,
+      activeChildId: selection.activeChildId ?? context?.activeChildId,
+      activeSectionId: selection.activeSectionId ?? context?.activeSectionId,
     };
   }
 
