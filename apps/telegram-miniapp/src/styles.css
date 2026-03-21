@@ -143,6 +143,10 @@ h3 {
   margin-bottom: 4px;
 }
 
+.coach-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .metric-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -236,11 +240,10 @@ button:disabled {
 
 .tabbar {
   position: fixed;
-  left: 0;
-  right: 0;
-  bottom: max(8px, env(safe-area-inset-bottom));
-  margin: 0 auto;
-  max-width: 760px;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: max(18px, calc(env(safe-area-inset-bottom) + 8px));
+  width: min(520px, calc(100% - 28px));
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 4px;
@@ -295,6 +298,6 @@ button:disabled {
   }
 
   .tabbar {
-    max-width: calc(100% - 14px);
+    width: calc(100% - 24px);
   }
 }

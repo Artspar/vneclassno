@@ -332,28 +332,30 @@ export function App() {
     <div className="page modern-shell">
       <section className="hero-head">
         <div className="hero-top-row">
-          <span className="hero-chip">Родитель</span>
+          <span className="hero-chip">{isCoachView ? 'Тренер' : 'Родитель'}</span>
           <span className="hero-chip">Online</span>
         </div>
         <div className="hero-logo">V</div>
         <div className="hero-title-wrap">
-          <h2>{activeChild ? `${activeChild.firstName} ${activeChild.lastName}` : 'Ребенок не выбран'}</h2>
+          <h2>{isCoachView ? 'Тренерский режим' : activeChild ? `${activeChild.firstName} ${activeChild.lastName}` : 'Ребенок не выбран'}</h2>
           <p>{activeSection?.name ?? 'Секция не выбрана'}</p>
         </div>
       </section>
 
       <section className="content-sheet">
-        <div className="context-grid compact-grid">
-          <div className="stack">
-            <p className="muted">Ребенок</p>
-            <select value={activeChildId} onChange={(e) => setActiveChildId(e.target.value)}>
-              {context.children.map((child) => (
-                <option key={child.id} value={child.id}>
-                  {child.firstName} {child.lastName}
-                </option>
-              ))}
-            </select>
-          </div>
+        <div className={`context-grid compact-grid ${isCoachView ? 'coach-grid' : ''}`}>
+          {!isCoachView && (
+            <div className="stack">
+              <p className="muted">Ребенок</p>
+              <select value={activeChildId} onChange={(e) => setActiveChildId(e.target.value)}>
+                {context.children.map((child) => (
+                  <option key={child.id} value={child.id}>
+                    {child.firstName} {child.lastName}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="stack">
             <p className="muted">Секция</p>
             <select value={activeSectionId} onChange={(e) => setActiveSectionId(e.target.value)}>
@@ -369,21 +371,43 @@ export function App() {
         <section className="tab-screen stack">
         {tab === 'home' && (
           <>
-            <p className="muted">Секция: {activeSection?.name ?? 'не выбрана'}</p>
-            <div className="metric-grid">
-              <article className="metric-item">
-                <p className="muted">Баланс</p>
-                <h3>8 занятий</h3>
-              </article>
-              <article className="metric-item">
-                <p className="muted">Ближайшее</p>
-                <h3>Сегодня 18:00</h3>
-              </article>
-              <article className="metric-item">
-                <p className="muted">Статус</p>
-                <h3>На занятии</h3>
-              </article>
-            </div>
+            {isCoachView ? (
+              <>
+                <p className="muted">Секция: {activeSection?.name ?? 'не выбрана'}</p>
+                <div className="metric-grid">
+                  <article className="metric-item">
+                    <p className="muted">Следующее занятие</p>
+                    <h3>Сегодня 18:00</h3>
+                  </article>
+                  <article className="metric-item">
+                    <p className="muted">Отметка группы</p>
+                    <h3>1 клик в Посещения</h3>
+                  </article>
+                  <article className="metric-item">
+                    <p className="muted">Заявки</p>
+                    <h3>Проверьте инвайты</h3>
+                  </article>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="muted">Секция: {activeSection?.name ?? 'не выбрана'}</p>
+                <div className="metric-grid">
+                  <article className="metric-item">
+                    <p className="muted">Баланс</p>
+                    <h3>8 занятий</h3>
+                  </article>
+                  <article className="metric-item">
+                    <p className="muted">Ближайшее</p>
+                    <h3>Сегодня 18:00</h3>
+                  </article>
+                  <article className="metric-item">
+                    <p className="muted">Статус</p>
+                    <h3>На занятии</h3>
+                  </article>
+                </div>
+              </>
+            )}
 
             {inviteToken && (
               <div className="stack invite-box">

@@ -46,9 +46,10 @@ export class AuthService {
         telegramId,
       }));
 
-    if ((await this.identityStore.listRoleAssignments(user.id)).length === 0) {
-      await this.identityStore.addRoleAssignment({ userId: user.id, role: 'parent' });
-    }
+    await this.ensureDefaultRoleAssignments(user.id, {
+      telegramId,
+      phone: user.phone,
+    });
 
     return this.buildAuthResponse(user.id);
   }
@@ -78,9 +79,10 @@ export class AuthService {
         phone,
       }));
 
-    if ((await this.identityStore.listRoleAssignments(user.id)).length === 0) {
-      await this.identityStore.addRoleAssignment({ userId: user.id, role: 'parent' });
-    }
+    await this.ensureDefaultRoleAssignments(user.id, {
+      telegramId: user.telegramId,
+      phone,
+    });
 
     return this.buildAuthResponse(user.id);
   }
@@ -140,5 +142,65 @@ export class AuthService {
     } catch {
       return undefined;
     }
+  }
+
+  private async ensureDefaultRoleAssignments(
+    userId: string,
+    identity: {
+      telegramId?: string;
+      phone?: string;
+    },
+  ): Promise<void> {
+    const assignments = await this.identityStore.listRoleAssignments(userId);
+    if (assignments.length > 0) {
+      return;
+    }
+
+    const coachIds = this.readCsvEnv('DEMO_COACH_TELEGRAM_IDS', ['1001']);
+    const sectionAdminIds = this.readCsvEnv('DEMO_SECTION_ADMIN_TELEGRAM_IDS', ['1002']);
+    const coachPhones = this.readCsvEnv('DEMO_COACH_PHONES', ['+79990000002']);
+    const sectionAdminPhones = this.readCsvEnv('DEMO_SECTION_ADMIN_PHONES', ['+79990000003']);
+
+    const coachSectionId = process.env.DEMO_COACH_SECTION_ID?.trim() || 'section-a';
+    const sectionAdminSectionId = process.env.DEMO_SECTION_ADMIN_SECTION_ID?.trim() || 'section-b';
+
+    const isCoach =
+      (identity.telegramId ? coachIds.includes(identity.telegramId) : false) ||
+      (identity.phone ? coachPhones.includes(identity.phone) : false);
+    const isSectionAdmin =
+      (identity.telegramId ? sectionAdminIds.includes(identity.telegramId) : false) ||
+      (identity.phone ? sectionAdminPhones.includes(identity.phone) : false);
+
+    if (isSectionAdmin) {
+      await this.identityStore.addRoleAssignment({
+        userId,
+        role: 'section_admin',
+        sectionId: sectionAdminSectionId,
+      });
+      return;
+    }
+
+    if (isCoach) {
+      await this.identityStore.addRoleAssignment({
+        userId,
+        role: 'coach',
+        sectionId: coachSectionId,
+      });
+      return;
+    }
+
+    await this.identityStore.addRoleAssignment({ userId, role: 'parent' });
+  }
+
+  private readCsvEnv(key: string, fallback: string[] = []): string[] {
+    const raw = process.env[key]?.trim();
+    if (!raw) {
+      return fallback;
+    }
+
+    return raw
+      .split(',')
+      .map((value) => value.trim())
+      .filter((value) => value.length > 0);
   }
 }

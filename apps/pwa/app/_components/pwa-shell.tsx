@@ -239,6 +239,17 @@ export default function PwaShell() {
           <div className="auth-panel stack">
             <h1>Вход в приложение</h1>
             <p className="caption">Один раз вводите данные, дальше вход автоматический.</p>
+            <div className="quick-roles">
+              <button type="button" className="role-pill" onClick={() => setPhone('+79990000001')}>
+                Родитель
+              </button>
+              <button type="button" className="role-pill" onClick={() => setPhone('+79990000002')}>
+                Тренер
+              </button>
+              <button type="button" className="role-pill" onClick={() => setPhone('+79990000003')}>
+                Админ секции
+              </button>
+            </div>
             <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Телефон" />
             <input value={otpCode} onChange={(e) => setOtpCode(e.target.value)} placeholder="Код" />
             <button disabled={busy} onClick={() => void login()}>
@@ -262,23 +273,25 @@ export default function PwaShell() {
         </div>
         <div className="hero-logo">V</div>
         <div className="hero-title-wrap">
-          <h2>{activeChild ? `${activeChild.firstName} ${activeChild.lastName}` : 'Ребенок не выбран'}</h2>
+          <h2>{isCoachView ? 'Тренерский режим' : activeChild ? `${activeChild.firstName} ${activeChild.lastName}` : 'Ребенок не выбран'}</h2>
           <p>{activeSection?.name ?? 'Секция не выбрана'}</p>
         </div>
       </section>
 
       <section className="content-sheet fade-in-2">
-        <div className="context-grid compact-grid">
-          <div className="stack">
-            <p className="caption">Ребенок</p>
-            <select value={activeChildId} onChange={(e) => setActiveChildId(e.target.value)}>
-              {context.children.map((child) => (
-                <option key={child.id} value={child.id}>
-                  {child.firstName} {child.lastName}
-                </option>
-              ))}
-            </select>
-          </div>
+        <div className={`context-grid compact-grid ${isCoachView ? 'coach-grid' : ''}`}>
+          {!isCoachView && (
+            <div className="stack">
+              <p className="caption">Ребенок</p>
+              <select value={activeChildId} onChange={(e) => setActiveChildId(e.target.value)}>
+                {context.children.map((child) => (
+                  <option key={child.id} value={child.id}>
+                    {child.firstName} {child.lastName}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="stack">
             <p className="caption">Секция</p>
             <select value={activeSectionId} onChange={(e) => setActiveSectionId(e.target.value)}>
@@ -294,24 +307,50 @@ export default function PwaShell() {
         <section className="tab-screen stack">
         {tab === 'home' && (
           <>
-            <div className="headline-row">
-              <span className="status-pill live">На занятии</span>
-            </div>
-            <p className="caption">Секция: {activeSection?.name ?? 'не выбрана'}</p>
-            <div className="metric-grid">
-              <article className="metric-item metric-warm">
-                <p className="caption">Баланс абонемента</p>
-                <h3>8 занятий</h3>
-              </article>
-              <article className="metric-item metric-cool">
-                <p className="caption">Ближайшее занятие</p>
-                <h3>Сегодня 18:00</h3>
-              </article>
-              <article className="metric-item metric-fresh">
-                <p className="caption">Списано за месяц</p>
-                <h3>6 занятий</h3>
-              </article>
-            </div>
+            {isCoachView ? (
+              <>
+                <div className="headline-row">
+                  <h2>Группа под контролем</h2>
+                  <span className="status-pill live">Тренер online</span>
+                </div>
+                <p className="caption">Секция: {activeSection?.name ?? 'не выбрана'}</p>
+                <div className="metric-grid">
+                  <article className="metric-item metric-cool">
+                    <p className="caption">Следующее занятие</p>
+                    <h3>Сегодня 18:00</h3>
+                  </article>
+                  <article className="metric-item metric-fresh">
+                    <p className="caption">Отметить группу</p>
+                    <h3>1 клик в Посещения</h3>
+                  </article>
+                  <article className="metric-item metric-warm">
+                    <p className="caption">Новые заявки</p>
+                    <h3>Проверьте инвайты</h3>
+                  </article>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="headline-row">
+                  <span className="status-pill live">На занятии</span>
+                </div>
+                <p className="caption">Секция: {activeSection?.name ?? 'не выбрана'}</p>
+                <div className="metric-grid">
+                  <article className="metric-item metric-warm">
+                    <p className="caption">Баланс абонемента</p>
+                    <h3>8 занятий</h3>
+                  </article>
+                  <article className="metric-item metric-cool">
+                    <p className="caption">Ближайшее занятие</p>
+                    <h3>Сегодня 18:00</h3>
+                  </article>
+                  <article className="metric-item metric-fresh">
+                    <p className="caption">Списано за месяц</p>
+                    <h3>6 занятий</h3>
+                  </article>
+                </div>
+              </>
+            )}
           </>
         )}
 
