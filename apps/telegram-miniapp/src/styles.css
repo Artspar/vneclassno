@@ -179,6 +179,45 @@ h3 {
   color: var(--muted);
 }
 
+
+
+.section-head-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.section-ghost-btn {
+  width: auto;
+  border: 1px solid #cfe0fb;
+  background: #f2f8ff;
+  color: #1b6ed1;
+  border-radius: 10px;
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.flow-note {
+  margin: 0;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 13px;
+  border: 1px solid transparent;
+}
+
+.flow-note-success {
+  background: #e9f8ef;
+  border-color: #b9ebca;
+  color: #12663a;
+}
+
+.flow-note-error {
+  background: #ffeef1;
+  border-color: #ffc7d2;
+  color: #9a1f36;
+}
 .tab-screen {
   box-shadow: 0 8px 18px rgba(32, 46, 74, 0.06);
 }

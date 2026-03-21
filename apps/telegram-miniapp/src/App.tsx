@@ -437,6 +437,7 @@ export function App() {
       const refreshedBoard = await getAttendanceBoard(accessToken, activeSectionId);
       setAttendanceBoard(refreshedBoard);
       await loadPayments();
+      setStatusMessage('Ответ по участию сохранен.');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Не удалось обновить участие');
     } finally {
@@ -508,6 +509,7 @@ export function App() {
       setNotificationMessage('');
       setNotificationChildIds([]);
       await loadNotificationsFeed();
+      setStatusMessage('Уведомление отправлено.');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Не удалось отправить уведомление');
     } finally {
@@ -538,6 +540,7 @@ export function App() {
         const refreshed = await getAttendanceBoard(accessToken, activeSectionId);
         setAttendanceBoard(refreshed);
       }
+      setStatusMessage('Статус посещения обновлен.');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Не удалось обновить посещение');
     } finally {
@@ -555,6 +558,7 @@ export function App() {
       });
       const next = await getAttendanceBoard(accessToken, activeSectionId);
       setAttendanceBoard(next);
+      setStatusMessage(decision === 'approved' ? 'Отсутствие подтверждено.' : 'Отсутствие отклонено.');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Не удалось принять решение по отсутствию');
     } finally {
@@ -614,6 +618,7 @@ export function App() {
       await setActiveRolePreference(accessToken, role);
       setActiveRole(role);
       window.localStorage.setItem(ACTIVE_ROLE_KEY, role);
+      setStatusMessage(`Активная роль: ${ROLE_LABELS[role]}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Не удалось переключить роль');
     } finally {
@@ -731,7 +736,27 @@ export function App() {
     }
   }
 
+  async function refreshProfileContext() {
+    if (!accessToken) {
+      return;
+    }
+
+    setBusy(true);
+    setError('');
+    try {
+      const refreshed = await meContext(accessToken);
+      setContext(refreshed);
+      setStatusMessage('Профиль синхронизирован.');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Не удалось обновить профиль');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   useEffect(() => {
+    setStatusMessage('');
+
     if (!shareChildId && activeChildId) {
       setShareChildId(activeChildId);
     }
@@ -845,6 +870,9 @@ export function App() {
           </div>
         </div>
 
+        {statusMessage && <p className="flow-note flow-note-success">{statusMessage}</p>}
+        {error && <p className="flow-note flow-note-error">{error}</p>}
+
         <section className="tab-screen stack">
         {tab === 'home' && (
           <>
@@ -931,7 +959,10 @@ export function App() {
         {tab === 'schedule' && (
           <>
             <div className="section-head">
-              <h2 className="section-title">Календарь</h2>
+              <div className="section-head-row">
+                <h2 className="section-title">Календарь</h2>
+                <button type="button" className="section-ghost-btn" disabled={notificationBusy || attendanceBusy} onClick={() => { void loadAttendanceBoard(); void loadNotificationsFeed(); }}>Обновить</button>
+              </div>
               <p className="section-subtitle">Тренировки, игры и лента уведомлений.</p>
             </div>
             {!attendanceBoard && <div className="list-card">{attendanceBusy ? 'Загружаем...' : 'Нет данных по расписанию'}</div>}
@@ -1052,7 +1083,10 @@ export function App() {
         {tab === 'attendance' && (
           <>
             <div className="section-head">
-              <h2 className="section-title">Посещения</h2>
+              <div className="section-head-row">
+                <h2 className="section-title">Посещения</h2>
+                <button type="button" className="section-ghost-btn" disabled={attendanceBusy} onClick={() => void loadAttendanceBoard()}>Обновить</button>
+              </div>
               <p className="section-subtitle">Быстрая фиксация присутствия и подтверждение отсутствий.</p>
             </div>
             {!attendanceBoard && <div className="list-card">{attendanceBusy ? 'Загружаем...' : 'Нет данных по посещениям'}</div>}
@@ -1126,7 +1160,10 @@ export function App() {
         {tab === 'payments' && (
           <>
             <div className="section-head">
-              <h2 className="section-title">Платежи</h2>
+              <div className="section-head-row">
+                <h2 className="section-title">Платежи</h2>
+                <button type="button" className="section-ghost-btn" disabled={paymentBusy} onClick={() => void loadPayments()}>Обновить</button>
+              </div>
               <p className="section-subtitle">Оплата по правилам участия и доступным каналам.</p>
             </div>
             {!paymentOptions && <div className="list-card">{paymentBusy ? 'Загружаем...' : 'Пока нет данных по оплате'}</div>}
@@ -1150,7 +1187,10 @@ export function App() {
         {tab === 'profile' && (
           <>
             <div className="section-head">
-              <h2 className="section-title">Профиль</h2>
+              <div className="section-head-row">
+                <h2 className="section-title">Профиль</h2>
+                <button type="button" className="section-ghost-btn" disabled={busy} onClick={() => void refreshProfileContext()}>Синхронизировать</button>
+              </div>
               <p className="section-subtitle">Роли, привязки и ссылки приглашения.</p>
             </div>
             <p className="muted">Активная роль: {ROLE_LABELS[activeRole]}</p>
@@ -1217,8 +1257,6 @@ export function App() {
           </>
         )}
 
-        {statusMessage && <p className="success">{statusMessage}</p>}
-        {error && <p className="error-inline">{error}</p>}
         </section>
       </section>
 

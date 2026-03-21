@@ -133,6 +133,7 @@ export default function PwaShell() {
   const [tab, setTab] = useState<Tab>('home');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [statusMessage, setStatusMessage] = useState('');
   const [phone, setPhone] = useState('+79990000001');
   const [otpCode, setOtpCode] = useState('1234');
   const [otpChannel, setOtpChannel] = useState<OtpChannel>('sms');
@@ -361,6 +362,7 @@ export default function PwaShell() {
       const refreshedBoard = await getAttendanceBoard(accessToken, activeSectionId);
       setAttendanceBoard(refreshedBoard);
       await loadPayments();
+      setStatusMessage('Ответ по участию сохранен.');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Не удалось обновить участие');
     } finally {
@@ -432,6 +434,7 @@ export default function PwaShell() {
       setNotificationMessage('');
       setNotificationChildIds([]);
       await loadNotificationsFeed();
+      setStatusMessage('Уведомление отправлено.');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Не удалось отправить уведомление');
     } finally {
@@ -462,6 +465,7 @@ export default function PwaShell() {
         const refreshed = await getAttendanceBoard(accessToken, activeSectionId);
         setAttendanceBoard(refreshed);
       }
+      setStatusMessage('Статус посещения обновлен.');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Не удалось обновить посещение');
     } finally {
@@ -479,6 +483,7 @@ export default function PwaShell() {
       });
       const next = await getAttendanceBoard(accessToken, activeSectionId);
       setAttendanceBoard(next);
+      setStatusMessage(decision === 'approved' ? 'Отсутствие подтверждено.' : 'Отсутствие отклонено.');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Не удалось принять решение по отсутствию');
     } finally {
@@ -501,6 +506,8 @@ export default function PwaShell() {
   }
 
   useEffect(() => {
+    setStatusMessage('');
+
     if (tab === 'attendance' || tab === 'schedule') {
       void loadAttendanceBoard();
     }
@@ -590,6 +597,7 @@ export default function PwaShell() {
       await setActiveRolePreference(accessToken, role);
       setActiveRole(role);
       window.localStorage.setItem(ACTIVE_ROLE_KEY, role);
+      setStatusMessage(`Активная роль: ${ROLE_LABELS[role]}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Не удалось переключить роль');
     } finally {
@@ -663,6 +671,7 @@ export default function PwaShell() {
         childId: childIdForLink,
       });
       setShareLinkUrl(invite.pwaInviteUrl);
+      setStatusMessage('Ссылка для второго родителя готова.');
 
       if (navigator.share) {
         await navigator.share({
@@ -688,11 +697,29 @@ export default function PwaShell() {
     try {
       const result = await requestTelegramLink(accessToken);
       setTelegramLinkUrl(result.startUrl);
+      setStatusMessage('Ссылка привязки Telegram сформирована.');
       window.open(result.startUrl, '_blank', 'noopener,noreferrer');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Не удалось сформировать ссылку привязки Telegram');
     } finally {
       setLinkBusy(false);
+    }
+  }
+
+  async function refreshProfileContext() {
+    if (!accessToken) {
+      return;
+    }
+
+    setBusy(true);
+    setError('');
+    try {
+      await loadContext(accessToken);
+      setStatusMessage('Профиль синхронизирован.');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Не удалось обновить профиль');
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -797,6 +824,9 @@ export default function PwaShell() {
           </div>
         </div>
 
+        {statusMessage && <p className="flow-note flow-note-success">{statusMessage}</p>}
+        {error && <p className="flow-note flow-note-error">{error}</p>}
+
         <section className="tab-screen stack">
         {tab === 'home' && (
           <>
@@ -858,7 +888,10 @@ export default function PwaShell() {
         {tab === 'schedule' && (
           <>
             <div className="section-head">
-              <h2 className="section-title">Расписание</h2>
+              <div className="section-head-row">
+                <h2 className="section-title">Расписание</h2>
+                <button type="button" className="section-ghost-btn" disabled={notificationBusy || attendanceBusy} onClick={() => { void loadAttendanceBoard(); void loadNotificationsFeed(); }}>Обновить</button>
+              </div>
               <p className="section-subtitle">Тренировки, игры и лента уведомлений.</p>
             </div>
             {!attendanceBoard && <div className="list-card">{attendanceBusy ? 'Загружаем...' : 'Нет данных по расписанию'}</div>}
@@ -979,7 +1012,10 @@ export default function PwaShell() {
         {tab === 'attendance' && (
           <>
             <div className="section-head">
-              <h2 className="section-title">Посещения</h2>
+              <div className="section-head-row">
+                <h2 className="section-title">Посещения</h2>
+                <button type="button" className="section-ghost-btn" disabled={attendanceBusy} onClick={() => void loadAttendanceBoard()}>Обновить</button>
+              </div>
               <p className="section-subtitle">Быстрая фиксация присутствия и подтверждение отсутствий.</p>
             </div>
             {!attendanceBoard && <div className="list-card">{attendanceBusy ? 'Загружаем...' : 'Нет данных по посещениям'}</div>}
@@ -1053,7 +1089,10 @@ export default function PwaShell() {
         {tab === 'payments' && (
           <>
             <div className="section-head">
-              <h2 className="section-title">Платежи</h2>
+              <div className="section-head-row">
+                <h2 className="section-title">Платежи</h2>
+                <button type="button" className="section-ghost-btn" disabled={paymentBusy} onClick={() => void loadPayments()}>Обновить</button>
+              </div>
               <p className="section-subtitle">Оплата по правилам участия и доступным каналам.</p>
             </div>
             {!paymentOptions && <div className="list-card">{paymentBusy ? 'Загружаем...' : 'Пока нет данных по оплате'}</div>}
@@ -1077,7 +1116,10 @@ export default function PwaShell() {
         {tab === 'profile' && (
           <>
             <div className="section-head">
-              <h2 className="section-title">Профиль</h2>
+              <div className="section-head-row">
+                <h2 className="section-title">Профиль</h2>
+                <button type="button" className="section-ghost-btn" disabled={busy} onClick={() => void refreshProfileContext()}>Синхронизировать</button>
+              </div>
               <p className="section-subtitle">Роли, привязки и ссылки приглашения.</p>
             </div>
             <p className="caption">Активная роль: {ROLE_LABELS[activeRole]}</p>
@@ -1156,7 +1198,6 @@ export default function PwaShell() {
         ))}
       </nav>
 
-      {error && <p className="error">{error}</p>}
     </main>
   );
 }
