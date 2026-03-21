@@ -8,8 +8,10 @@ import { AuthController } from './http/auth.controller.js';
 import { ContextController } from './http/context.controller.js';
 import { HealthController } from './http/health.controller.js';
 import { InvitesController } from './http/invites.controller.js';
+import { PreferencesController } from './http/preferences.controller.js';
 import { TelegramController } from './http/telegram.controller.js';
 import { InviteService } from './invites/invite-service.js';
+import { UserPreferencesService } from './preferences/user-preferences-service.js';
 import { PrismaService } from './prisma/prisma.service.js';
 import { type IdentityStore } from './repositories/identity-store.js';
 import { InMemoryIdentityStore } from './repositories/in-memory-identity-store.js';
@@ -19,7 +21,7 @@ import { TelegramBotService } from './telegram/telegram-bot.service.js';
 import { IDENTITY_STORE } from './tokens.js';
 
 @Module({
-  controllers: [AuthController, AttendanceController, ContextController, HealthController, InvitesController, TelegramController],
+  controllers: [AuthController, AttendanceController, ContextController, HealthController, InvitesController, PreferencesController, TelegramController],
   providers: [
     PrismaService,
     PrismaIdentityStore,
@@ -70,6 +72,11 @@ import { IDENTITY_STORE } from './tokens.js';
       provide: AttendanceService,
       inject: [IDENTITY_STORE],
       useFactory: (store: IdentityStore) => new AttendanceService(store),
+    },
+    {
+      provide: UserPreferencesService,
+      inject: [IDENTITY_STORE],
+      useFactory: (store: IdentityStore) => new UserPreferencesService(store),
     },
   ],
 })

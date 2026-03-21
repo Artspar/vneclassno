@@ -35,6 +35,10 @@ export type MeContextResponse = {
   activeSectionId?: string;
 };
 
+export type PreferencesResponse = {
+  activeRole?: 'super_admin' | 'section_admin' | 'coach' | 'parent';
+};
+
 export type AttendanceBoard = {
   sectionId: string;
   canManage: boolean;
@@ -223,5 +227,27 @@ export function decideAbsence(
       authorization: `Bearer ${accessToken}`,
     },
     body: JSON.stringify(payload),
+  });
+}
+
+export function getPreferences(accessToken: string): Promise<PreferencesResponse> {
+  return request<PreferencesResponse>('/me/preferences', {
+    method: 'GET',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+    },
+  });
+}
+
+export function setActiveRole(
+  accessToken: string,
+  activeRole: 'super_admin' | 'section_admin' | 'coach' | 'parent',
+): Promise<PreferencesResponse> {
+  return request<PreferencesResponse>('/me/preferences/role', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ activeRole }),
   });
 }

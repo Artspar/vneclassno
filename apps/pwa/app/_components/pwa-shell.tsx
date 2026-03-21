@@ -7,13 +7,18 @@ import {
   decideAbsence,
   getAttendanceBoard,
   getMeContext,
+  getPreferences,
   loginPwa,
   requestAbsence,
+  setActiveRole as setActiveRolePreference,
   type AttendanceBoard,
   type MeContextResponse,
 } from '../../lib/api';
 
 const ACCESS_TOKEN_KEY = 'vneclassno_pwa_access_token';
+const ACTIVE_ROLE_KEY = 'vneclassno_pwa_active_role';
+
+type UserRole = 'super_admin' | 'section_admin' | 'coach' | 'parent';
 
 type Tab = 'home' | 'schedule' | 'attendance' | 'payments' | 'profile';
 
@@ -24,6 +29,21 @@ const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'payments', label: 'Платежи' },
   { id: 'profile', label: 'Профиль' },
 ];
+
+const ROLE_LABELS: Record<UserRole, string> = {
+  super_admin: 'Главный админ',
+  section_admin: 'Админ секции',
+  coach: 'Тренер',
+  parent: 'Родитель',
+};
+
+function toUserRole(value: string): UserRole | null {
+  if (value === 'super_admin' || value === 'section_admin' || value === 'coach' || value === 'parent') {
+    return value;
+  }
+
+  return null;
+}
 
 function TabIcon({ tab }: { tab: Tab }) {
   const shared = {
@@ -90,6 +110,8 @@ export default function PwaShell() {
   const [otpCode, setOtpCode] = useState('1234');
   const [accessToken, setAccessToken] = useState('');
   const [context, setContext] = useState<MeContextResponse | null>(null);
+  const [activeRole, setActiveRole] = useState<UserRole>('parent');
+  const [roleBusy, setRoleBusy] = useState(false);
   const [activeChildId, setActiveChildId] = useState('');
   const [activeSectionId, setActiveSectionId] = useState('');
   const [attendanceBoard, setAttendanceBoard] = useState<AttendanceBoard | null>(null);
@@ -111,6 +133,16 @@ export default function PwaShell() {
     try {
       const nextContext = await getMeContext(token);
       setContext(nextContext);
+
+      const preferences = await getPreferences(token).catch(() => ({ activeRole: undefined }));
+      const storedRole = window.localStorage.getItem(ACTIVE_ROLE_KEY);
+      const resolvedFromServer = preferences.activeRole && nextContext.roles.includes(preferences.activeRole) ? preferences.activeRole : null;
+      const hasStoredRole = typeof storedRole === 'string' && nextContext.roles.includes(storedRole);
+      const resolvedRole = resolvedFromServer ?? (hasStoredRole && storedRole ? storedRole : (nextContext.roles[0] ?? 'parent'));
+      const normalizedRole = toUserRole(resolvedRole) ?? 'parent';
+      setActiveRole(normalizedRole);
+      window.localStorage.setItem(ACTIVE_ROLE_KEY, normalizedRole);
+
       setActiveChildId(nextContext.activeChildId ?? nextContext.children[0]?.id ?? '');
       setActiveSectionId(nextContext.activeSectionId ?? nextContext.sections[0]?.id ?? '');
     } catch (e) {
@@ -206,6 +238,7 @@ export default function PwaShell() {
     window.localStorage.removeItem(ACCESS_TOKEN_KEY);
     setAccessToken('');
     setContext(null);
+    window.localStorage.removeItem(ACTIVE_ROLE_KEY);
     setActiveChildId('');
     setActiveSectionId('');
     setAttendanceBoard(null);
@@ -222,8 +255,25 @@ export default function PwaShell() {
 
   const activeChild = context?.children.find((child) => child.id === activeChildId) ?? context?.children[0];
   const activeSection = context?.sections.find((section) => section.id === activeSectionId) ?? context?.sections[0];
-  const isCoachView =
-    context?.roles.includes('coach') || context?.roles.includes('section_admin') || context?.roles.includes('super_admin') || false;
+  const isCoachView = activeRole === 'coach' || activeRole === 'section_admin' || activeRole === 'super_admin';
+
+  async function switchRole(role: UserRole) {
+    if (!accessToken) {
+      return;
+    }
+
+    setRoleBusy(true);
+    setError('');
+    try {
+      await setActiveRolePreference(accessToken, role);
+      setActiveRole(role);
+      window.localStorage.setItem(ACTIVE_ROLE_KEY, role);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Не удалось переключить роль');
+    } finally {
+      setRoleBusy(false);
+    }
+  }
 
   if (!accessToken || !context) {
     return (
@@ -446,6 +496,23 @@ export default function PwaShell() {
         {tab === 'profile' && (
           <>
             <h2>Профиль</h2>
+            <p className="caption">Активная роль: {ROLE_LABELS[activeRole]}</p>
+            <div className="quick-roles">
+              {context.roles
+                .map((value) => toUserRole(value))
+                .filter((value): value is UserRole => Boolean(value))
+                .map((role) => (
+                  <button
+                    key={role}
+                    type="button"
+                    className={`role-pill ${activeRole === role ? 'active' : ''}`}
+                    disabled={roleBusy}
+                    onClick={() => void switchRole(role)}
+                  >
+                    {ROLE_LABELS[role]}
+                  </button>
+                ))}
+            </div>
             <p className="caption">Телефон: {phone}</p>
             <Link href="/demo" className="link-block">
               Открыть UI Test Lab

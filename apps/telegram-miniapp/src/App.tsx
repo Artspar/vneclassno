@@ -4,10 +4,12 @@ import {
   bulkUpdateAttendance,
   decideAbsence,
   getAttendanceBoard,
+  getPreferences,
   loginTelegram,
   meContext,
   requestAbsence,
   resolveInvite,
+  setActiveRole as setActiveRolePreference,
   type AttendanceBoard,
   type MeContext,
 } from './api';
@@ -16,6 +18,9 @@ import { getStartTokenFromTelegram, getStartTokenFromUrl, getTelegramWebApp } fr
 type Tab = 'home' | 'schedule' | 'attendance' | 'payments' | 'profile';
 
 const ACCESS_TOKEN_KEY = 'vneclassno_tg_access_token';
+const ACTIVE_ROLE_KEY = 'vneclassno_tg_active_role';
+
+type UserRole = 'super_admin' | 'section_admin' | 'coach' | 'parent';
 
 const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'home', label: 'Главная' },
@@ -24,6 +29,21 @@ const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'payments', label: 'Платежи' },
   { id: 'profile', label: 'Профиль' },
 ];
+
+const ROLE_LABELS: Record<UserRole, string> = {
+  super_admin: 'Главный админ',
+  section_admin: 'Админ секции',
+  coach: 'Тренер',
+  parent: 'Родитель',
+};
+
+function toUserRole(value: string): UserRole | null {
+  if (value === 'super_admin' || value === 'section_admin' || value === 'coach' || value === 'parent') {
+    return value;
+  }
+
+  return null;
+}
 
 function TabIcon({ tab }: { tab: Tab }) {
   const shared = {
@@ -114,6 +134,8 @@ export function App() {
 
   const [accessToken, setAccessToken] = useState('');
   const [context, setContext] = useState<MeContext | null>(null);
+  const [activeRole, setActiveRole] = useState<UserRole>('parent');
+  const [roleBusy, setRoleBusy] = useState(false);
   const [activeChildId, setActiveChildId] = useState('');
   const [activeSectionId, setActiveSectionId] = useState('');
 
@@ -168,6 +190,16 @@ export function App() {
 
       setAccessToken(resolvedToken);
       setContext(me);
+
+      const preferences = await getPreferences(resolvedToken).catch(() => ({ activeRole: undefined }));
+      const storedRole = window.localStorage.getItem(ACTIVE_ROLE_KEY);
+      const resolvedFromServer = preferences.activeRole && me.roles.includes(preferences.activeRole) ? preferences.activeRole : null;
+      const hasStoredRole = typeof storedRole === 'string' && me.roles.includes(storedRole);
+      const resolvedRole = resolvedFromServer ?? (hasStoredRole && storedRole ? storedRole : (me.roles[0] ?? 'parent'));
+      const normalizedRole = toUserRole(resolvedRole) ?? 'parent';
+      setActiveRole(normalizedRole);
+      window.localStorage.setItem(ACTIVE_ROLE_KEY, normalizedRole);
+
       setActiveChildId(me.activeChildId ?? me.children[0]?.id ?? '');
       setActiveSectionId(me.activeSectionId ?? me.sections[0]?.id ?? '');
       setSelectedChildId(me.children[0]?.id ?? '');
@@ -296,8 +328,25 @@ export function App() {
   const activeChild = context?.children.find((child) => child.id === activeChildId) ?? context?.children[0];
   const activeSection = context?.sections.find((section) => section.id === activeSectionId) ?? context?.sections[0];
   const hasChildren = (context?.children.length ?? 0) > 0;
-  const isCoachView =
-    context?.roles.includes('coach') || context?.roles.includes('section_admin') || context?.roles.includes('super_admin') || false;
+  const isCoachView = activeRole === 'coach' || activeRole === 'section_admin' || activeRole === 'super_admin';
+
+  async function switchRole(role: UserRole) {
+    if (!accessToken) {
+      return;
+    }
+
+    setRoleBusy(true);
+    setError('');
+    try {
+      await setActiveRolePreference(accessToken, role);
+      setActiveRole(role);
+      window.localStorage.setItem(ACTIVE_ROLE_KEY, role);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Не удалось переключить роль');
+    } finally {
+      setRoleBusy(false);
+    }
+  }
 
   useEffect(() => {
     if (tab !== 'attendance') {
@@ -533,6 +582,23 @@ export function App() {
         {tab === 'profile' && (
           <>
             <h2>Профиль</h2>
+            <p className="muted">Активная роль: {ROLE_LABELS[activeRole]}</p>
+            <div className="quick-roles">
+              {context.roles
+                .map((value) => toUserRole(value))
+                .filter((value): value is UserRole => Boolean(value))
+                .map((role) => (
+                  <button
+                    key={role}
+                    type="button"
+                    className={`role-pill ${activeRole === role ? 'active' : ''}`}
+                    disabled={roleBusy}
+                    onClick={() => void switchRole(role)}
+                  >
+                    {ROLE_LABELS[role]}
+                  </button>
+                ))}
+            </div>
             <p className="muted">Вход выполнен через Telegram.</p>
           </>
         )}

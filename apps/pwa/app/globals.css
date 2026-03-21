@@ -171,6 +171,12 @@ h3 {
   padding: 8px 6px;
 }
 
+.role-pill.active {
+  border-color: #8bb8ff;
+  background: #dfeeff;
+  color: #14509f;
+}
+
 .stack {
   display: grid;
   gap: 10px;
