@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { AttendanceService } from '../attendance/attendance-service.js';
 import { randomUUID } from 'node:crypto';
 import type { UserRole } from '../domain/models.js';
 import { RbacService } from '../rbac/rbac-service.js';
@@ -17,6 +18,7 @@ interface NotificationDelivery {
 interface NotificationItem {
   id: string;
   sectionId: string;
+  sessionId?: string;
   type: NotificationType;
   title: string;
   message: string;
@@ -37,11 +39,13 @@ interface AccessContext {
 @Injectable()
 export class NotificationService {
   private readonly notifications: NotificationItem[] = [];
+  private readonly readByNotificationId = new Map<string, Set<string>>();
 
   constructor(
     private readonly identityStore: IdentityStore,
     private readonly rbacService: RbacService,
     private readonly telegramBotService: TelegramBotService,
+    private readonly attendanceService: AttendanceService,
   ) {}
 
   async create(
@@ -94,10 +98,16 @@ export class NotificationService {
       childIds = requested;
     }
 
+    let sessionId: string | undefined;
+    if (type === 'training' || type === 'game') {
+      sessionId = (await this.attendanceService.getSectionSession(sectionId).catch(() => undefined))?.id;
+    }
+
     const delivery = await this.deliverToTelegram(
       {
         id: randomUUID(),
         sectionId,
+        sessionId,
         type,
         title,
         message,
@@ -117,6 +127,7 @@ export class NotificationService {
     const item: NotificationItem = {
       id: randomUUID(),
       sectionId,
+      sessionId,
       type,
       title,
       message,
@@ -147,37 +158,87 @@ export class NotificationService {
     const sectionFilter = filters.sectionId?.trim();
     const childFilter = filters.childId?.trim();
 
-    const visible = this.notifications.filter((item) => {
-      if (sectionFilter && item.sectionId !== sectionFilter) {
-        return false;
-      }
+    const visible = this.notifications.filter((item) => this.isVisibleForUser(item, access, sectionFilter, childFilter));
 
-      const isManager = access.isSuperAdmin || this.canManageSection(access, item.sectionId);
-      if (isManager) {
-        if (childFilter) {
-          return item.childIds.includes(childFilter);
+    const items = await Promise.all(
+      visible.map(async (item) => {
+        const matchedChildIds = item.childIds.filter((childId) => access.parentChildIds.includes(childId));
+        const isManager = access.isSuperAdmin || this.canManageSection(access, item.sectionId);
+
+        const readBy = this.readByNotificationId.get(item.id);
+        const isRead = isManager ? false : (readBy?.has(userId) ?? false);
+
+        let participationSummary:
+          | {
+              confirmed: number;
+              declined: number;
+              notConfirmed: number;
+            }
+          | undefined;
+
+        if (item.sessionId) {
+          const targetChildIds = isManager ? item.childIds : matchedChildIds;
+          let confirmed = 0;
+          let declined = 0;
+          let notConfirmed = 0;
+
+          for (const childId of targetChildIds) {
+            const status = await this.attendanceService.getParticipationStatus(item.sessionId, childId);
+            if (status === 'confirmed') {
+              confirmed += 1;
+            } else if (status === 'declined') {
+              declined += 1;
+            } else {
+              notConfirmed += 1;
+            }
+          }
+
+          participationSummary = {
+            confirmed,
+            declined,
+            notConfirmed,
+          };
         }
-        return true;
-      }
 
-      const overlap = item.childIds.filter((childId) => access.parentChildIds.includes(childId));
-      if (overlap.length === 0) {
-        return false;
-      }
-
-      if (childFilter) {
-        return overlap.includes(childFilter);
-      }
-
-      return true;
-    });
+        return {
+          ...item,
+          matchedChildIds,
+          isRead,
+          participationSummary,
+          channels: ['telegram', 'pwa'] as const,
+        };
+      }),
+    );
 
     return {
-      items: visible.map((item) => ({
-        ...item,
-        matchedChildIds: item.childIds.filter((childId) => access.parentChildIds.includes(childId)),
-        channels: ['telegram', 'pwa'],
-      })),
+      unreadCount: items.filter((item) => !item.isRead).length,
+      items,
+    };
+  }
+
+  async markRead(userId: string, notificationId: string) {
+    const item = this.notifications.find((entry) => entry.id === notificationId);
+    if (!item) {
+      throw new BadRequestException('Notification not found');
+    }
+
+    const access = await this.resolveAccess(userId);
+    if (!this.isVisibleForUser(item, access)) {
+      throw new BadRequestException('Notification is not visible for this user');
+    }
+
+    const isManager = access.isSuperAdmin || this.canManageSection(access, item.sectionId);
+    if (isManager) {
+      return { id: notificationId, isRead: false };
+    }
+
+    const readBy = this.readByNotificationId.get(notificationId) ?? new Set<string>();
+    readBy.add(userId);
+    this.readByNotificationId.set(notificationId, readBy);
+
+    return {
+      id: notificationId,
+      isRead: true,
     };
   }
 
@@ -254,5 +315,35 @@ export class NotificationService {
     }
 
     return access.sectionIds.includes(sectionId);
+  }
+
+  private isVisibleForUser(
+    item: NotificationItem,
+    access: AccessContext,
+    sectionFilter?: string,
+    childFilter?: string,
+  ): boolean {
+    if (sectionFilter && item.sectionId !== sectionFilter) {
+      return false;
+    }
+
+    const isManager = access.isSuperAdmin || this.canManageSection(access, item.sectionId);
+    if (isManager) {
+      if (childFilter) {
+        return item.childIds.includes(childFilter);
+      }
+      return true;
+    }
+
+    const overlap = item.childIds.filter((childId) => access.parentChildIds.includes(childId));
+    if (overlap.length === 0) {
+      return false;
+    }
+
+    if (childFilter) {
+      return overlap.includes(childFilter);
+    }
+
+    return true;
   }
 }

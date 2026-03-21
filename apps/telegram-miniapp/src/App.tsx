@@ -9,6 +9,7 @@ import {
   getAttendanceBoard,
   getContextSelection,
   getNotifications,
+  markNotificationRead,
   getPaymentOptions,
   getPreferences,
   loginTelegram,
@@ -31,6 +32,7 @@ type Tab = 'home' | 'schedule' | 'attendance' | 'payments' | 'profile';
 
 const ACCESS_TOKEN_KEY = 'vneclassno_tg_access_token';
 const ACTIVE_ROLE_KEY = 'vneclassno_tg_active_role';
+const NOTIFICATION_READ_KEY_PREFIX = 'vneclassno_tg_notification_read_';
 
 type UserRole = 'super_admin' | 'section_admin' | 'coach' | 'parent';
 
@@ -174,6 +176,9 @@ export function App() {
   const [attendanceBusy, setAttendanceBusy] = useState(false);
   const [notificationFeed, setNotificationFeed] = useState<NotificationFeedResponse | null>(null);
   const [notificationBusy, setNotificationBusy] = useState(false);
+  const [readNotificationIds, setReadNotificationIds] = useState<string[]>([]);
+  const [participationEditOpen, setParticipationEditOpen] = useState(false);
+  const [notificationEditIds, setNotificationEditIds] = useState<string[]>([]);
   const [paymentOptions, setPaymentOptions] = useState<PaymentOptionsResponse | null>(null);
   const [paymentBusy, setPaymentBusy] = useState(false);
   const [notificationType, setNotificationType] = useState<'training' | 'game' | 'event'>('training');
@@ -248,6 +253,19 @@ export function App() {
       setActiveChildId(selection.activeChildId ?? me.activeChildId ?? me.children[0]?.id ?? '');
       setActiveSectionId(selection.activeSectionId ?? me.activeSectionId ?? me.sections[0]?.id ?? '');
       setSelectedChildId(me.children[0]?.id ?? '');
+
+      const readKey = `${NOTIFICATION_READ_KEY_PREFIX}${me.userId}`;
+      const rawRead = window.localStorage.getItem(readKey);
+      if (!rawRead) {
+        setReadNotificationIds([]);
+      } else {
+        try {
+          const parsed = JSON.parse(rawRead);
+          setReadNotificationIds(Array.isArray(parsed) ? parsed.filter((value) => typeof value === 'string') : []);
+        } catch {
+          setReadNotificationIds([]);
+        }
+      }
       if (me.children.length === 0) {
         setInviteMode('new');
       }
@@ -320,6 +338,7 @@ export function App() {
       setError(e instanceof Error ? e.message : 'Не удалось загрузить посещения');
     } finally {
       setAttendanceBusy(false);
+      setParticipationEditOpen(false);
     }
   }
 
@@ -336,6 +355,14 @@ export function App() {
         childId: isCoachView ? undefined : activeChildId || undefined,
       });
       setNotificationFeed(feed);
+
+      if (!isCoachView) {
+        const serverReadIds = feed.items.filter((item) => item.isRead).map((item) => item.id);
+        setReadNotificationIds(serverReadIds);
+        persistReadNotifications(serverReadIds);
+      } else {
+        setReadNotificationIds([]);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Не удалось загрузить уведомления');
     } finally {
@@ -364,24 +391,57 @@ export function App() {
   }
 
   async function handleParticipationDecision(decision: 'confirmed' | 'declined') {
-    if (!attendanceBoard || !activeChildId) {
+    if (!attendanceBoard) {
       return;
+    }
+
+    const targetChildId = attendanceBoard.items.some((item) => item.childId === activeChildId)
+      ? activeChildId
+      : (attendanceBoard.items[0]?.childId ?? '');
+
+    if (!targetChildId) {
+      setError('В выбранной секции нет ребенка для подтверждения участия');
+      return;
+    }
+
+    if (targetChildId !== activeChildId) {
+      setActiveChildId(targetChildId);
+      if (accessToken) {
+        void setContextSelection(accessToken, {
+          activeChildId: targetChildId,
+          activeSectionId: activeSectionId || undefined,
+        }).catch(() => {});
+      }
     }
 
     setAttendanceBusy(true);
     setError('');
+    setParticipationEditOpen(false);
+    setAttendanceBoard((current) =>
+      current
+        ? {
+            ...current,
+            items: current.items.map((item) =>
+              item.childId === targetChildId ? { ...item, participationStatus: decision } : item,
+            ),
+          }
+        : current,
+    );
+
     try {
-      const board = await confirmParticipation(accessToken, {
+      await confirmParticipation(accessToken, {
         sessionId: attendanceBoard.session.id,
-        childId: activeChildId,
+        childId: targetChildId,
         decision,
       });
-      setAttendanceBoard(board);
+      const refreshedBoard = await getAttendanceBoard(accessToken, activeSectionId);
+      setAttendanceBoard(refreshedBoard);
       await loadPayments();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Не удалось обновить участие');
     } finally {
       setAttendanceBusy(false);
+      setParticipationEditOpen(false);
     }
   }
 
@@ -389,6 +449,43 @@ export function App() {
     setNotificationChildIds((current) =>
       current.includes(childId) ? current.filter((value) => value !== childId) : [...current, childId],
     );
+  }
+
+  function persistReadNotifications(nextIds: string[]) {
+    if (!context?.userId) {
+      return;
+    }
+
+    window.localStorage.setItem(`${NOTIFICATION_READ_KEY_PREFIX}${context.userId}`, JSON.stringify(nextIds));
+  }
+
+  async function markNotificationAsRead(notificationId: string) {
+    setReadNotificationIds((current) => {
+      if (current.includes(notificationId)) {
+        return current;
+      }
+
+      const next = [...current, notificationId];
+      persistReadNotifications(next);
+      return next;
+    });
+
+    try {
+      await markNotificationRead(accessToken, notificationId);
+    } catch {
+      // UI remains responsive even if read-sync request fails.
+    }
+  }
+
+  async function handleNotificationParticipation(notificationId: string, decision: 'confirmed' | 'declined') {
+    setNotificationEditIds((current) => current.filter((id) => id !== notificationId));
+    await handleParticipationDecision(decision);
+    await markNotificationAsRead(notificationId);
+    await loadNotificationsFeed();
+  }
+
+  function openNotificationEdit(notificationId: string) {
+    setNotificationEditIds((current) => (current.includes(notificationId) ? current : [...current, notificationId]));
   }
 
   async function sendNotification() {
@@ -465,10 +562,46 @@ export function App() {
     }
   }
 
+  useEffect(() => {
+    const roleIsCoach = activeRole === 'coach' || activeRole === 'section_admin' || activeRole === 'super_admin';
+    if (roleIsCoach || !attendanceBoard?.items?.length) {
+      return;
+    }
+
+    if (attendanceBoard.items.some((item) => item.childId === activeChildId)) {
+      return;
+    }
+
+    const fallbackChildId = attendanceBoard.items[0].childId;
+    setActiveChildId(fallbackChildId);
+
+    if (!accessToken) {
+      return;
+    }
+
+    void setContextSelection(accessToken, {
+      activeChildId: fallbackChildId,
+      activeSectionId: activeSectionId || undefined,
+    }).catch(() => {});
+  }, [activeRole, attendanceBoard, activeChildId, accessToken, activeSectionId]);
+
   const activeChild = context?.children.find((child) => child.id === activeChildId) ?? context?.children[0];
   const activeSection = context?.sections.find((section) => section.id === activeSectionId) ?? context?.sections[0];
   const hasChildren = (context?.children.length ?? 0) > 0;
   const isCoachView = activeRole === 'coach' || activeRole === 'section_admin' || activeRole === 'super_admin';
+  const participationChildId = attendanceBoard?.items.some((item) => item.childId === activeChildId)
+    ? activeChildId
+    : (attendanceBoard?.items[0]?.childId ?? '');
+  const activeParticipationStatus =
+    attendanceBoard?.items.find((item) => item.childId === participationChildId)?.participationStatus ?? 'not_confirmed';
+  const unreadNotificationCount = isCoachView
+    ? 0
+    : (typeof notificationFeed?.unreadCount === 'number'
+      ? notificationFeed.unreadCount
+      : (notificationFeed?.items.filter((item) => !readNotificationIds.includes(item.id)).length ?? 0));
+  const confirmedCount = attendanceBoard?.items.filter((item) => item.participationStatus === 'confirmed').length ?? 0;
+  const declinedCount = attendanceBoard?.items.filter((item) => item.participationStatus === 'declined').length ?? 0;
+  const pendingChildren = attendanceBoard?.items.filter((item) => !item.participationStatus).map((item) => item.childName) ?? [];
 
   async function switchRole(role: UserRole) {
     if (!accessToken) {
@@ -490,6 +623,8 @@ export function App() {
 
   async function handleSectionChange(nextSectionId: string) {
     setActiveSectionId(nextSectionId);
+    setParticipationEditOpen(false);
+    setNotificationEditIds([]);
 
     if (!accessToken) {
       return;
@@ -507,6 +642,8 @@ export function App() {
 
   async function handleChildChange(nextChildId: string) {
     setActiveChildId(nextChildId);
+    setParticipationEditOpen(false);
+    setNotificationEditIds([]);
 
     if (!accessToken) {
       return;
@@ -603,14 +740,36 @@ export function App() {
       void loadAttendanceBoard();
     }
 
-    if (tab === 'schedule') {
-      void loadNotificationsFeed();
-    }
-
     if (tab === 'payments') {
       void loadPayments();
     }
   }, [tab, accessToken, activeSectionId, activeChildId, activeRole]);
+
+  useEffect(() => {
+    if (!accessToken) {
+      return;
+    }
+
+    void loadNotificationsFeed();
+  }, [accessToken, activeSectionId, activeChildId, activeRole]);
+
+  useEffect(() => {
+    if (isCoachView || tab !== 'schedule' || !notificationFeed?.items?.length) {
+      return;
+    }
+
+    const unreadIds = notificationFeed.items
+      .filter((item) => !readNotificationIds.includes(item.id))
+      .map((item) => item.id);
+
+    if (unreadIds.length === 0) {
+      return;
+    }
+
+    const next = [...new Set([...readNotificationIds, ...unreadIds])];
+    setReadNotificationIds(next);
+    persistReadNotifications(next);
+  }, [isCoachView, tab, notificationFeed, readNotificationIds]);
 
   if (!accessToken || !context) {
     return (
@@ -760,16 +919,25 @@ export function App() {
                 {!isCoachView && activeChildId && (
                   <>
                     <p className="muted">
-                      Участие: {attendanceBoard.items.find((item) => item.childId === activeChildId)?.participationStatus ?? 'не подтверждено'}
+                      Участие: {attendanceBoard.items.find((item) => item.childId === participationChildId)?.participationStatus ?? 'не подтверждено'}
                     </p>
-                    <div className="inline-actions">
-                      <button disabled={attendanceBusy} onClick={() => void handleParticipationDecision('confirmed')}>
-                        Подтвердить участие
-                      </button>
-                      <button disabled={attendanceBusy} onClick={() => void handleParticipationDecision('declined')}>
-                        Не участвуем
-                      </button>
-                    </div>
+                    {activeParticipationStatus === 'not_confirmed' || participationEditOpen ? (
+                      <div className="inline-actions">
+                        <button disabled={attendanceBusy} onClick={() => void handleParticipationDecision('confirmed')}>
+                          Участвуем
+                        </button>
+                        <button disabled={attendanceBusy} onClick={() => void handleParticipationDecision('declined')}>
+                          Не участвуем
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="inline-actions">
+                        <p className="muted">Ответ отправлен: {activeParticipationStatus === 'confirmed' ? 'участвуем' : 'не участвуем'}</p>
+                        <button type="button" disabled={attendanceBusy} onClick={() => setParticipationEditOpen(true)}>
+                          Изменить ответ
+                        </button>
+                      </div>
+                    )}
                   </>
                 )}
               </div>
@@ -809,18 +977,51 @@ export function App() {
               </div>
             )}
 
+            {isCoachView && attendanceBoard && (
+              <div className="list-card stack">
+                <h3>Предварительный отчет участия</h3>
+                <p className="muted">Да: {confirmedCount} · Нет: {declinedCount} · Без ответа: {pendingChildren.length}</p>
+                {pendingChildren.length > 0 && <p className="muted">Ожидаем ответ: {pendingChildren.join(', ')}</p>}
+              </div>
+            )}
+
             <h3>Лента уведомлений</h3>
             {!notificationFeed && <div className="list-card">{notificationBusy ? 'Загружаем...' : 'Пока уведомлений нет'}</div>}
-            {notificationFeed?.items.map((item) => (
-              <div key={item.id} className="list-card stack">
-                <div className="headline-row">
-                  <strong>{item.title}</strong>
-                  <span className="status-pill">{item.type}</span>
+            {notificationFeed?.items.map((item) => {
+              const isRead = readNotificationIds.includes(item.id);
+              const isEditingAnswer = notificationEditIds.includes(item.id);
+              return (
+                <div key={item.id} className="list-card stack">
+                  <div className="headline-row">
+                    <strong>{item.title}</strong>
+                    <span className="status-pill">{item.type}</span>
+                  </div>
+                  <p>{item.message}</p>
+                  {!isCoachView && activeChildId && item.type !== 'event' && (
+                    <>
+                      {activeParticipationStatus === 'not_confirmed' || isEditingAnswer ? (
+                        <div className="inline-actions">
+                          <button disabled={attendanceBusy} onClick={() => void handleNotificationParticipation(item.id, 'confirmed')}>
+                            Участвуем
+                          </button>
+                          <button disabled={attendanceBusy} onClick={() => void handleNotificationParticipation(item.id, 'declined')}>
+                            Не участвуем
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="inline-actions">
+                          <p className="muted">Ответ отправлен: {activeParticipationStatus === 'confirmed' ? 'участвуем' : 'не участвуем'}</p>
+                          <button type="button" disabled={attendanceBusy} onClick={() => openNotificationEdit(item.id)}>
+                            Изменить ответ
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                  <p className="muted">{!isCoachView ? (isRead ? 'Прочитано' : 'Новое') + ' · ' : ''}Каналы: {item.channels.join(', ')} · {new Date(item.createdAt).toLocaleString('ru-RU')} · {getDeliveryTick(item.delivery)}</p>
                 </div>
-                <p>{item.message}</p>
-                <p className="muted">Каналы: {item.channels.join(', ')} · {new Date(item.createdAt).toLocaleString('ru-RU')} · {getDeliveryTick(item.delivery)}</p>
-              </div>
-            ))}
+              );
+            })}
           </>
         )}
 
@@ -997,7 +1198,8 @@ export function App() {
             onClick={() => setTab(item.id)}
           >
             <TabIcon tab={item.id} />
-            <span>{item.label}</span>
+            <span className="tabbar-label">{item.label}</span>
+            {item.id === 'schedule' && unreadNotificationCount > 0 && <span className="tabbar-badge">{unreadNotificationCount}</span>}
           </button>
         ))}
       </nav>

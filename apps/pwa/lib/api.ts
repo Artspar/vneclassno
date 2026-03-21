@@ -69,9 +69,11 @@ export type AttendanceBoard = {
 };
 
 export type NotificationFeedResponse = {
+  unreadCount?: number;
   items: Array<{
     id: string;
     sectionId: string;
+    sessionId?: string;
     type: 'training' | 'game' | 'event';
     title: string;
     message: string;
@@ -80,6 +82,12 @@ export type NotificationFeedResponse = {
     matchedChildIds?: string[];
     createdAt: string;
     channels: Array<'telegram' | 'pwa'>;
+    isRead?: boolean;
+    participationSummary?: {
+      confirmed: number;
+      declined: number;
+      notConfirmed: number;
+    };
     delivery?: { attempted: number; delivered: number; failed: number };
   }>;
 };
@@ -391,6 +399,16 @@ export function getNotifications(
   });
 }
 
+
+
+export function markNotificationRead(accessToken: string, notificationId: string): Promise<{ id: string; isRead: boolean }> {
+  return request<{ id: string; isRead: boolean }>(`/notifications/${encodeURIComponent(notificationId)}/read`, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+    },
+  });
+}
 
 export function createNotification(
   accessToken: string,

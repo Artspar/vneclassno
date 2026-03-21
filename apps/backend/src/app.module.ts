@@ -105,9 +105,13 @@ import { IDENTITY_STORE } from './tokens.js';
     },
     {
       provide: NotificationService,
-      inject: [IDENTITY_STORE, RbacService, TelegramBotService],
-      useFactory: (store: IdentityStore, rbac: RbacService, telegramBotService: TelegramBotService) =>
-        new NotificationService(store, rbac, telegramBotService),
+      inject: [IDENTITY_STORE, RbacService, TelegramBotService, AttendanceService],
+      useFactory: (
+        store: IdentityStore,
+        rbac: RbacService,
+        telegramBotService: TelegramBotService,
+        attendanceService: AttendanceService,
+      ) => new NotificationService(store, rbac, telegramBotService, attendanceService),
     },
     {
       provide: PaymentService,

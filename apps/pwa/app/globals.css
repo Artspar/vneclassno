@@ -246,12 +246,14 @@ h3 {
 
 .inline-actions {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 8px;
+  align-items: center;
 }
 
 .inline-actions button {
   width: 100%;
+  min-width: 0;
   padding: 9px 8px;
   font-size: 12px;
 }
@@ -331,6 +333,27 @@ button:disabled {
   justify-items: center;
   gap: 4px;
   font-weight: 600;
+  position: relative;
+}
+
+.tabbar-label {
+  line-height: 1;
+}
+
+.tabbar-badge {
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #ff4d6d;
+  color: #fff;
+  font-size: 10px;
+  line-height: 16px;
+  text-align: center;
+  font-weight: 700;
 }
 
 .tabbar-item svg {

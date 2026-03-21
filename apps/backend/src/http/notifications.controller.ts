@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query, Req } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req } from '@nestjs/common';
 import type { Request } from 'express';
 import { TokenService } from '../auth/token-service.js';
 import { requireUserId } from '../common/auth.js';
@@ -15,6 +15,12 @@ export class NotificationsController {
   async list(@Req() request: Request, @Query('sectionId') sectionId?: string, @Query('childId') childId?: string) {
     const userId = requireUserId(request, this.tokenService);
     return this.notificationService.list(userId, { sectionId, childId });
+  }
+
+  @Post(':notificationId/read')
+  async markRead(@Req() request: Request, @Param('notificationId') notificationId: string) {
+    const userId = requireUserId(request, this.tokenService);
+    return this.notificationService.markRead(userId, notificationId);
   }
 
   @Post()
