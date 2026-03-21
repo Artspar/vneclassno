@@ -11,10 +11,12 @@ import {
   requestAbsence,
   resolveInvite,
   confirmPhoneLink,
+  requestPhoneLinkOtp,
   setContextSelection,
   setActiveRole as setActiveRolePreference,
   type AttendanceBoard,
   type MeContext,
+  type OtpChannel,
 } from './api';
 import { getStartTokenFromTelegram, getStartTokenFromUrl, getTelegramWebApp } from './telegram';
 
@@ -151,7 +153,10 @@ export function App() {
   const [attendanceBoard, setAttendanceBoard] = useState<AttendanceBoard | null>(null);
   const [attendanceBusy, setAttendanceBusy] = useState(false);
   const [linkPhone, setLinkPhone] = useState('+79990000001');
-  const [linkOtp, setLinkOtp] = useState('1234');
+  const [linkOtp, setLinkOtp] = useState('');
+  const [linkChannel, setLinkChannel] = useState<OtpChannel>('sms');
+  const [linkOtpRequestId, setLinkOtpRequestId] = useState('');
+  const [linkStatus, setLinkStatus] = useState('');
   const [linkBusy, setLinkBusy] = useState(false);
 
   useEffect(() => {
@@ -390,6 +395,22 @@ export function App() {
     }
   }
 
+  async function handlePhoneLinkRequestOtp() {
+    setLinkBusy(true);
+    setError('');
+    setLinkStatus('');
+    try {
+      const response = await requestPhoneLinkOtp(linkPhone, linkChannel);
+      setLinkOtpRequestId(response.requestId);
+      const debugTail = response.debugCode ? ` (тест-код: ${response.debugCode})` : '';
+      setLinkStatus(`Код отправлен через ${response.channel}, получатель ${response.destinationMasked}${debugTail}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Не удалось запросить OTP код');
+    } finally {
+      setLinkBusy(false);
+    }
+  }
+
   async function handlePhoneLinkConfirm() {
     if (!accessToken) {
       return;
@@ -398,8 +419,9 @@ export function App() {
     setLinkBusy(true);
     setError('');
     try {
-      await confirmPhoneLink(accessToken, linkPhone, linkOtp);
+      await confirmPhoneLink(accessToken, linkPhone, linkOtp, linkOtpRequestId || undefined);
       setStatusMessage('Телефон успешно привязан к текущему Telegram аккаунту.');
+      setLinkStatus('');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Не удалось привязать телефон');
     } finally {
@@ -667,10 +689,19 @@ export function App() {
             <div className="stack invite-box">
               <p className="muted">{context.hasLinkedPhone ? 'Перепривязать телефон PWA' : 'Привязать телефон PWA'}</p>
               <input value={linkPhone} onChange={(e) => setLinkPhone(e.target.value)} placeholder="+79990000001" />
-              <input value={linkOtp} onChange={(e) => setLinkOtp(e.target.value)} placeholder="Код (1234)" />
+              <select value={linkChannel} onChange={(e) => setLinkChannel(e.target.value as OtpChannel)}>
+                <option value="sms">OTP по SMS</option>
+                <option value="telegram">OTP в Telegram</option>
+                <option value="vk">OTP во ВКонтакте</option>
+              </select>
+              <button type="button" disabled={linkBusy} onClick={() => void handlePhoneLinkRequestOtp()}>
+                {linkBusy ? 'Отправляем код...' : 'Получить OTP код'}
+              </button>
+              <input value={linkOtp} onChange={(e) => setLinkOtp(e.target.value)} placeholder="Код" />
               <button type="button" disabled={linkBusy} onClick={() => void handlePhoneLinkConfirm()}>
                 {linkBusy ? 'Привязываем...' : 'Привязать телефон'}
               </button>
+              {linkStatus && <p className="muted">{linkStatus}</p>}
             </div>
           </>
         )}

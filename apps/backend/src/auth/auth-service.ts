@@ -1,4 +1,5 @@
 import type { UserRole } from '../domain/models.js';
+import { OtpService, type OtpChannel } from '../otp/otp-service.js';
 import { listPermissionsByRoles } from '../rbac/permissions.js';
 import type { IdentityStore } from '../repositories/identity-store.js';
 import { TokenService } from './token-service.js';
@@ -10,6 +11,7 @@ interface TelegramAuthInput {
 interface PwaAuthInput {
   phone?: string;
   otpCode?: string;
+  otpRequestId?: string;
   magicToken?: string;
 }
 
@@ -29,11 +31,23 @@ interface AuthResponse {
 export class AuthService {
   private readonly allowUnsafeTelegramIdFallback =
     process.env.AUTH_ALLOW_UNSAFE_TELEGRAM_ID === 'true' || process.env.NODE_ENV !== 'production';
+  private readonly allowLegacyOtpBypass = process.env.AUTH_ALLOW_LEGACY_OTP === 'true' || process.env.NODE_ENV !== 'production';
 
   constructor(
     private readonly tokenService: TokenService,
     private readonly identityStore: IdentityStore,
+    private readonly otpService: OtpService,
   ) {}
+
+  requestPwaOtp(input: { phone?: string; channel?: string }): {
+    requestId: string;
+    channel: OtpChannel;
+    expiresInSec: number;
+    destinationMasked: string;
+    debugCode?: string;
+  } {
+    return this.otpService.requestCode(String(input.phone ?? ''), String(input.channel ?? 'sms'));
+  }
 
   async loginTelegram(input: TelegramAuthInput): Promise<AuthResponse> {
     const telegramId = this.extractTelegramId(input.initData);
@@ -74,6 +88,10 @@ export class AuthService {
       throw new Error('Phone is required for PWA login');
     }
 
+    if (byOtp) {
+      this.verifyOtp(phone, String(input.otpCode ?? ''), input.otpRequestId);
+    }
+
     const user =
       (await this.identityStore.getUserByPhone(phone)) ??
       (await this.identityStore.createUser({
@@ -98,6 +116,19 @@ export class AuthService {
     }
 
     return this.buildAuthResponse(user.id);
+  }
+
+  private verifyOtp(phone: string, otpCode: string, otpRequestId?: string): void {
+    if (otpRequestId && otpRequestId.length > 0) {
+      this.otpService.verifyCode(phone, otpRequestId, otpCode);
+      return;
+    }
+
+    if (this.allowLegacyOtpBypass && otpCode === '1234') {
+      return;
+    }
+
+    throw new Error('OTP requestId is required. Сначала запросите OTP код.');
   }
 
   private async buildAuthResponse(userId: string): Promise<AuthResponse> {

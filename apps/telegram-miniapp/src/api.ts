@@ -43,6 +43,16 @@ export type ContextSelectionResponse = {
   activeSectionId?: string;
 };
 
+export type OtpChannel = 'sms' | 'telegram' | 'vk';
+
+export type OtpRequestResponse = {
+  requestId: string;
+  channel: OtpChannel;
+  expiresInSec: number;
+  destinationMasked: string;
+  debugCode?: string;
+};
+
 export type AttendanceBoard = {
   sectionId: string;
   canManage: boolean;
@@ -253,12 +263,20 @@ export function setContextSelection(
   });
 }
 
-export function confirmPhoneLink(accessToken: string, phone: string, otpCode: string): Promise<{ ok: true }> {
+export function confirmPhoneLink(accessToken: string, phone: string, otpCode: string, otpRequestId?: string): Promise<{ ok: true }> {
   return request<{ ok: true }>('/me/link/phone/confirm', {
     method: 'POST',
     headers: {
       authorization: `Bearer ${accessToken}`,
     },
-    body: JSON.stringify({ phone, otpCode }),
+    body: JSON.stringify({ phone, otpCode, otpRequestId }),
+  });
+}
+
+
+export function requestPhoneLinkOtp(phone: string, channel: OtpChannel): Promise<OtpRequestResponse> {
+  return request<OtpRequestResponse>('/me/link/phone/request-otp', {
+    method: 'POST',
+    body: JSON.stringify({ phone, channel }),
   });
 }

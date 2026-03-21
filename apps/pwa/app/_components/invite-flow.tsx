@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { acceptInvite, getMeContext, loginPwa, resolveInvite, type InviteResponse } from '../../lib/api';
+import { acceptInvite, getMeContext, loginPwa, requestPwaOtp, resolveInvite, type InviteResponse, type OtpChannel } from '../../lib/api';
 
 const ACCESS_TOKEN_KEY = 'vneclassno_pwa_access_token';
 
@@ -14,7 +14,9 @@ export default function InviteFlow({ token }: { token: string }) {
   const [invite, setInvite] = useState<InviteResponse | null>(null);
   const [accessToken, setAccessToken] = useState<string>('');
   const [phone, setPhone] = useState('+79990000001');
-  const [otpCode, setOtpCode] = useState('1234');
+  const [otpCode, setOtpCode] = useState('');
+  const [otpChannel, setOtpChannel] = useState<OtpChannel>('sms');
+  const [otpRequestId, setOtpRequestId] = useState('');
   const [children, setChildren] = useState<Array<{ id: string; firstName: string; lastName: string }>>([]);
   const [selectedChildId, setSelectedChildId] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -73,11 +75,29 @@ export default function InviteFlow({ token }: { token: string }) {
     }
   }
 
+  async function handleRequestOtp() {
+    setBusy(true);
+    setError('');
+    setMessage('');
+    try {
+      const response = await requestPwaOtp(phone, otpChannel);
+      setOtpRequestId(response.requestId);
+      setMessage(`Код отправлен через ${response.channel}. Получатель: ${response.destinationMasked}`);
+      if (response.debugCode) {
+        setMessage((prev) => `${prev}. Тестовый код: ${response.debugCode}`);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Не удалось запросить OTP код');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleLogin() {
     setBusy(true);
     setError('');
     try {
-      const auth = await loginPwa(phone, otpCode);
+      const auth = await loginPwa(phone, otpCode, otpRequestId || undefined);
       window.localStorage.setItem(ACCESS_TOKEN_KEY, auth.accessToken);
       setAccessToken(auth.accessToken);
       await loadContext(auth.accessToken);
@@ -152,6 +172,14 @@ export default function InviteFlow({ token }: { token: string }) {
           <h2>Вход родителя</h2>
           <p className="caption">Одноразовый вход в PWA перед принятием инвайта.</p>
           <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Телефон" />
+          <select value={otpChannel} onChange={(e) => setOtpChannel(e.target.value as OtpChannel)}>
+            <option value="sms">OTP по SMS</option>
+            <option value="telegram">OTP в Telegram</option>
+            <option value="vk">OTP во ВКонтакте</option>
+          </select>
+          <button disabled={busy} onClick={() => void handleRequestOtp()}>
+            {busy ? 'Отправляем код...' : 'Получить OTP код'}
+          </button>
           <input value={otpCode} onChange={(e) => setOtpCode(e.target.value)} placeholder="Код" />
           <button disabled={busy} onClick={() => void handleLogin()}>
             {busy ? 'Входим...' : 'Войти'}
@@ -209,6 +237,7 @@ export default function InviteFlow({ token }: { token: string }) {
         </div>
       )}
 
+      {message && step !== 'done' && <p className="success">{message}</p>}
       {error && step !== 'error' && <p className="error">{error}</p>}
     </div>
   );

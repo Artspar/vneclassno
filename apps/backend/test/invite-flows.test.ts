@@ -4,6 +4,7 @@ import { AuthService } from '../src/auth/auth-service.js';
 import { TokenService } from '../src/auth/token-service.js';
 import { ParentContextService } from '../src/context/parent-context-service.js';
 import { InviteService } from '../src/invites/invite-service.js';
+import { OtpService } from '../src/otp/otp-service.js';
 import { RbacService } from '../src/rbac/rbac-service.js';
 import { InMemoryIdentityStore } from '../src/repositories/in-memory-identity-store.js';
 import { TelegramBotService } from '../src/telegram/telegram-bot.service.js';
@@ -13,7 +14,7 @@ async function setup() {
   await store.seedDemoData();
 
   const tokenService = new TokenService('test_access_secret', 'test_refresh_secret');
-  const auth = new AuthService(tokenService, store);
+  const auth = new AuthService(tokenService, store, new OtpService());
   const rbac = new RbacService(store);
   const telegramBot = new TelegramBotService();
   const invites = new InviteService(store, rbac, telegramBot);

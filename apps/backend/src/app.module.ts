@@ -13,6 +13,7 @@ import { PreferencesController } from './http/preferences.controller.js';
 import { TelegramController } from './http/telegram.controller.js';
 import { InviteService } from './invites/invite-service.js';
 import { AccountLinkService } from './linking/account-link-service.js';
+import { OtpService } from './otp/otp-service.js';
 import { UserPreferencesService } from './preferences/user-preferences-service.js';
 import { PrismaService } from './prisma/prisma.service.js';
 import { type IdentityStore } from './repositories/identity-store.js';
@@ -28,6 +29,7 @@ import { IDENTITY_STORE } from './tokens.js';
     PrismaService,
     PrismaIdentityStore,
     TelegramBotService,
+    OtpService,
     {
       provide: IDENTITY_STORE,
       inject: [PrismaIdentityStore],
@@ -56,8 +58,9 @@ import { IDENTITY_STORE } from './tokens.js';
     },
     {
       provide: AuthService,
-      inject: [TokenService, IDENTITY_STORE],
-      useFactory: (tokenService: TokenService, store: IdentityStore) => new AuthService(tokenService, store),
+      inject: [TokenService, IDENTITY_STORE, OtpService],
+      useFactory: (tokenService: TokenService, store: IdentityStore, otpService: OtpService) =>
+        new AuthService(tokenService, store, otpService),
     },
     {
       provide: ParentContextService,
@@ -82,8 +85,8 @@ import { IDENTITY_STORE } from './tokens.js';
     },
     {
       provide: AccountLinkService,
-      inject: [IDENTITY_STORE],
-      useFactory: (store: IdentityStore) => new AccountLinkService(store),
+      inject: [IDENTITY_STORE, OtpService],
+      useFactory: (store: IdentityStore, otpService: OtpService) => new AccountLinkService(store, otpService),
     },
   ],
 })

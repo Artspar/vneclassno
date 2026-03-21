@@ -67,6 +67,16 @@ export type AttendanceBoard = {
   }>;
 };
 
+export type OtpChannel = 'sms' | 'telegram' | 'vk';
+
+export type OtpRequestResponse = {
+  requestId: string;
+  channel: OtpChannel;
+  expiresInSec: number;
+  destinationMasked: string;
+  debugCode?: string;
+};
+
 export type CreatedInvite = {
   token: string;
   sectionId: string;
@@ -118,10 +128,17 @@ export function resolveInvite(token: string): Promise<InviteResponse> {
   });
 }
 
-export function loginPwa(phone: string, otpCode: string): Promise<AuthResponse> {
+export function requestPwaOtp(phone: string, channel: OtpChannel): Promise<OtpRequestResponse> {
+  return request<OtpRequestResponse>('/auth/pwa/request-otp', {
+    method: 'POST',
+    body: JSON.stringify({ phone, channel }),
+  });
+}
+
+export function loginPwa(phone: string, otpCode: string, otpRequestId?: string): Promise<AuthResponse> {
   return request<AuthResponse>('/auth/pwa/login', {
     method: 'POST',
-    body: JSON.stringify({ phone, otpCode }),
+    body: JSON.stringify({ phone, otpCode, otpRequestId }),
   });
 }
 

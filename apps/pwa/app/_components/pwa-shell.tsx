@@ -10,12 +10,14 @@ import {
   getMeContext,
   getPreferences,
   loginPwa,
+  requestPwaOtp,
   requestTelegramLink,
   requestAbsence,
   setContextSelection,
   setActiveRole as setActiveRolePreference,
   type AttendanceBoard,
   type MeContextResponse,
+  type OtpChannel,
 } from '../../lib/api';
 
 const ACCESS_TOKEN_KEY = 'vneclassno_pwa_access_token';
@@ -110,7 +112,10 @@ export default function PwaShell() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [phone, setPhone] = useState('+79990000001');
-  const [otpCode, setOtpCode] = useState('1234');
+  const [otpCode, setOtpCode] = useState('');
+  const [otpChannel, setOtpChannel] = useState<OtpChannel>('sms');
+  const [otpRequestId, setOtpRequestId] = useState('');
+  const [otpStatus, setOtpStatus] = useState('');
   const [accessToken, setAccessToken] = useState('');
   const [context, setContext] = useState<MeContextResponse | null>(null);
   const [activeRole, setActiveRole] = useState<UserRole>('parent');
@@ -162,11 +167,27 @@ export default function PwaShell() {
     }
   }
 
+  async function requestOtpCode() {
+    setBusy(true);
+    setError('');
+    setOtpStatus('');
+    try {
+      const response = await requestPwaOtp(phone, otpChannel);
+      setOtpRequestId(response.requestId);
+      const debugTail = response.debugCode ? ` (тест-код: ${response.debugCode})` : '';
+      setOtpStatus(`Код отправлен через ${response.channel}, получатель ${response.destinationMasked}${debugTail}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Не удалось запросить OTP код');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function login() {
     setBusy(true);
     setError('');
     try {
-      const auth = await loginPwa(phone, otpCode);
+      const auth = await loginPwa(phone, otpCode, otpRequestId || undefined);
       window.localStorage.setItem(ACCESS_TOKEN_KEY, auth.accessToken);
       setAccessToken(auth.accessToken);
       await loadContext(auth.accessToken);
@@ -360,10 +381,19 @@ export default function PwaShell() {
               </button>
             </div>
             <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Телефон" />
+            <select value={otpChannel} onChange={(e) => setOtpChannel(e.target.value as OtpChannel)}>
+              <option value="sms">OTP по SMS</option>
+              <option value="telegram">OTP в Telegram</option>
+              <option value="vk">OTP во ВКонтакте</option>
+            </select>
+            <button disabled={busy} onClick={() => void requestOtpCode()}>
+              {busy ? 'Отправляем код...' : 'Получить OTP код'}
+            </button>
             <input value={otpCode} onChange={(e) => setOtpCode(e.target.value)} placeholder="Код" />
             <button disabled={busy} onClick={() => void login()}>
               {busy ? 'Входим...' : 'Продолжить'}
             </button>
+            {otpStatus && <p className="caption">{otpStatus}</p>}
             {error && <p className="error">{error}</p>}
           </div>
         </section>
