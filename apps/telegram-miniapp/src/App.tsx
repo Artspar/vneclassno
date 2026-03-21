@@ -58,6 +58,9 @@ export function App() {
       setActiveChildId(me.activeChildId ?? me.children[0]?.id ?? '');
       setActiveSectionId(me.activeSectionId ?? me.sections[0]?.id ?? '');
       setSelectedChildId(me.children[0]?.id ?? '');
+      if (me.children.length === 0) {
+        setInviteMode('new');
+      }
 
       const token = getStartTokenFromUrl() ?? getStartTokenFromTelegram(wa) ?? '';
       if (token) {
@@ -77,6 +80,16 @@ export function App() {
   async function handleAcceptInvite() {
     if (!inviteToken) {
       setError('Инвайт не найден');
+      return;
+    }
+
+    if (inviteMode === 'child' && !selectedChildId) {
+      setError('У вас пока нет ребенка в аккаунте. Выберите режим "Новый ребенок".');
+      return;
+    }
+
+    if (inviteMode === 'new' && (!firstName.trim() || !lastName.trim())) {
+      setError('Заполните имя и фамилию ребенка.');
       return;
     }
 
@@ -105,6 +118,7 @@ export function App() {
 
   const activeChild = context?.children.find((child) => child.id === activeChildId) ?? context?.children[0];
   const activeSection = context?.sections.find((section) => section.id === activeSectionId) ?? context?.sections[0];
+  const hasChildren = (context?.children.length ?? 0) > 0;
 
   if (!accessToken || !context) {
     return (
@@ -176,11 +190,11 @@ export function App() {
               <div className="stack invite-box">
                 <p className="muted">Инвайт: {inviteToken}</p>
                 <select value={inviteMode} onChange={(e) => setInviteMode(e.target.value as 'child' | 'new')}>
-                  <option value="child">Существующий ребенок</option>
+                  {hasChildren && <option value="child">Существующий ребенок</option>}
                   <option value="new">Новый ребенок</option>
                 </select>
 
-                {inviteMode === 'child' && (
+                {inviteMode === 'child' && hasChildren && (
                   <select value={selectedChildId} onChange={(e) => setSelectedChildId(e.target.value)}>
                     {context.children.map((child) => (
                       <option key={child.id} value={child.id}>
