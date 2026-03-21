@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { acceptInvite, createInvite, getMeContext, loginPwa, loginTelegram } from '../../lib/api';
 
+type Step = 'coach' | 'invite' | 'parent' | 'accept' | 'done';
+
 export default function DemoLab() {
   const [sectionId, setSectionId] = useState('section-b');
   const [coachTelegramId, setCoachTelegramId] = useState('1002');
@@ -15,7 +17,9 @@ export default function DemoLab() {
   const [inviteToken, setInviteToken] = useState('');
   const [inviteUrl, setInviteUrl] = useState('');
   const [childId, setChildId] = useState('');
+  const [resultStatus, setResultStatus] = useState('');
 
+  const [step, setStep] = useState<Step>('coach');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [log, setLog] = useState<string[]>([]);
@@ -30,6 +34,7 @@ export default function DemoLab() {
     try {
       const auth = await loginTelegram(`id=${coachTelegramId}`);
       setCoachToken(auth.accessToken);
+      setStep('invite');
       pushLog(`Вход админа/тренера выполнен (${auth.user.id})`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Не удалось войти как тренер');
@@ -50,6 +55,7 @@ export default function DemoLab() {
       const invite = await createInvite(coachToken, sectionId);
       setInviteToken(invite.token);
       setInviteUrl(invite.pwaInviteUrl);
+      setStep('parent');
       pushLog(`Инвайт создан для ${sectionId}: ${invite.token}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Не удалось создать инвайт');
@@ -66,12 +72,13 @@ export default function DemoLab() {
       setParentToken(auth.accessToken);
       const context = await getMeContext(auth.accessToken);
       const firstChild = context.children[0];
-      if (firstChild) {
-        setChildId(firstChild.id);
-        pushLog(`Вход родителя выполнен, выбран ребенок ${firstChild.firstName} ${firstChild.lastName}`);
-      } else {
-        pushLog('Вход родителя выполнен, детей пока нет');
+      if (!firstChild) {
+        throw new Error('У родителя нет детей в демо-данных');
       }
+
+      setChildId(firstChild.id);
+      setStep('accept');
+      pushLog(`Вход родителя выполнен, выбран ребенок ${firstChild.firstName} ${firstChild.lastName}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Не удалось войти как родитель');
     } finally {
@@ -97,6 +104,8 @@ export default function DemoLab() {
     setError('');
     try {
       const result = await acceptInvite(inviteToken, parentToken, { childId });
+      setResultStatus(result.status);
+      setStep('done');
       pushLog(`Инвайт принят, статус заявки: ${result.status}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Не удалось принять инвайт');
@@ -105,16 +114,29 @@ export default function DemoLab() {
     }
   }
 
+  function resetFlow() {
+    setCoachToken('');
+    setParentToken('');
+    setInviteToken('');
+    setInviteUrl('');
+    setChildId('');
+    setResultStatus('');
+    setError('');
+    setStep('coach');
+    pushLog('Сценарий сброшен');
+  }
+
   return (
     <div className="stack">
       <div className="card stack">
         <span className="badge">UI Test Lab</span>
         <h1>Тест без терминала</h1>
-        <p className="caption">Полный тест invite-флоу через кнопки в браузере.</p>
+        <p className="caption">Пошаговый мастер invite-флоу.</p>
+        <p className="caption mono">Текущий шаг: {step}</p>
       </div>
 
       <div className="card stack">
-        <h2>1. Параметры</h2>
+        <h2>Параметры</h2>
         <input value={sectionId} onChange={(e) => setSectionId(e.target.value)} placeholder="sectionId" />
         <input
           value={coachTelegramId}
@@ -125,35 +147,58 @@ export default function DemoLab() {
         <input value={parentOtpCode} onChange={(e) => setParentOtpCode(e.target.value)} placeholder="otp код" />
       </div>
 
-      <div className="card stack">
-        <h2>2. Сценарий</h2>
-        <button disabled={busy} onClick={() => void runCoachLogin()}>
-          Войти как админ/тренер
-        </button>
-        <button disabled={busy || !coachToken} onClick={() => void runCreateInvite()}>
-          Создать инвайт
-        </button>
-        <button disabled={busy} className="secondary" onClick={() => void runParentLoginAndResolveChild()}>
-          Войти как родитель
-        </button>
-        <button disabled={busy || !inviteToken || !parentToken || !childId} onClick={() => void runAcceptInvite()}>
-          Принять инвайт выбранным ребенком
-        </button>
-      </div>
+      {step === 'coach' && (
+        <div className="card stack">
+          <h2>Шаг 1: Вход админа/тренера</h2>
+          <button disabled={busy} onClick={() => void runCoachLogin()}>
+            {busy ? 'Выполняется...' : 'Войти как админ/тренер'}
+          </button>
+        </div>
+      )}
 
-      <div className="card stack">
-        <h2>3. Быстрые ссылки</h2>
-        <p className="caption">invite token: {inviteToken || 'еще не создан'}</p>
-        <p className="caption mono">child id: {childId || 'не выбран'}</p>
-        {inviteToken && (
-          <Link href={`/invite/${inviteToken}`}>Открыть страницу инвайта в PWA</Link>
-        )}
-        {inviteUrl && (
-          <a href={inviteUrl} target="_blank" rel="noreferrer">
-            Открыть pwaInviteUrl в новой вкладке
-          </a>
-        )}
-      </div>
+      {step === 'invite' && (
+        <div className="card stack">
+          <h2>Шаг 2: Создание инвайта</h2>
+          <button disabled={busy || !coachToken} onClick={() => void runCreateInvite()}>
+            {busy ? 'Выполняется...' : 'Создать инвайт'}
+          </button>
+        </div>
+      )}
+
+      {step === 'parent' && (
+        <div className="card stack">
+          <h2>Шаг 3: Вход родителя</h2>
+          <button disabled={busy} className="secondary" onClick={() => void runParentLoginAndResolveChild()}>
+            {busy ? 'Выполняется...' : 'Войти как родитель'}
+          </button>
+        </div>
+      )}
+
+      {step === 'accept' && (
+        <div className="card stack">
+          <h2>Шаг 4: Принятие инвайта</h2>
+          <p className="caption mono">child id: {childId}</p>
+          <button disabled={busy || !inviteToken || !parentToken || !childId} onClick={() => void runAcceptInvite()}>
+            {busy ? 'Выполняется...' : 'Принять инвайт выбранным ребенком'}
+          </button>
+        </div>
+      )}
+
+      {step === 'done' && (
+        <div className="card stack">
+          <h2>Готово</h2>
+          <p className="success">Сценарий завершен. Статус заявки: {resultStatus}</p>
+          {inviteToken && <Link href={`/invite/${inviteToken}`}>Открыть invite-страницу для проверки UI</Link>}
+          {inviteUrl && (
+            <a href={inviteUrl} target="_blank" rel="noreferrer">
+              Открыть pwaInviteUrl в новой вкладке
+            </a>
+          )}
+          <button className="secondary" onClick={resetFlow}>
+            Пройти сценарий заново
+          </button>
+        </div>
+      )}
 
       <div className="card stack">
         <h2>Лог</h2>

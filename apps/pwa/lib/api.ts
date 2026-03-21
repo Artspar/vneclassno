@@ -25,6 +25,12 @@ export type MeContextResponse = {
     firstName: string;
     lastName: string;
   }>;
+  sections: Array<{
+    id: string;
+    name: string;
+  }>;
+  activeChildId?: string;
+  activeSectionId?: string;
 };
 
 export type CreatedInvite = {

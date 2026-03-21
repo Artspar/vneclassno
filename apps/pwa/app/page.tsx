@@ -1,16 +1,5 @@
-import Link from 'next/link';
+import PwaShell from './_components/pwa-shell';
 
 export default function HomePage() {
-  return (
-    <main>
-      <div className="card stack">
-        <span className="badge">VneClassno PWA</span>
-        <h1>Управление занятиями</h1>
-        <p className="caption">
-          Открой ссылку инвайта вида <code>/invite/&lt;token&gt;</code>, чтобы добавить ребенка в секцию.
-        </p>
-        <Link href="/demo">Открыть UI Test Lab (без терминала)</Link>
-      </div>
-    </main>
-  );
+  return <PwaShell />;
 }
