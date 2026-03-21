@@ -22,6 +22,12 @@ export type MeContext = {
     firstName: string;
     lastName: string;
   }>;
+  sections: Array<{
+    id: string;
+    name: string;
+  }>;
+  activeChildId?: string;
+  activeSectionId?: string;
 };
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000';
