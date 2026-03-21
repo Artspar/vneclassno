@@ -848,6 +848,10 @@ export function App() {
         <section className="tab-screen stack">
         {tab === 'home' && (
           <>
+            <div className="section-head">
+              <h2 className="section-title">{isCoachView ? 'Панель тренера' : 'Главный экран'}</h2>
+              <p className="section-subtitle">{isCoachView ? 'Быстрые действия по группе и коммуникациям.' : 'Ключевые показатели ребенка и секции.'}</p>
+            </div>
             {isCoachView ? (
               <>
                 <p className="muted">Секция: {activeSection?.name ?? 'не выбрана'}</p>
@@ -917,12 +921,19 @@ export function App() {
                 </button>
               </div>
             )}
+            <div className="inline-actions">
+              <button type="button" onClick={() => setTab('schedule')}>Открыть календарь</button>
+              <button type="button" onClick={() => setTab('attendance')}>{isCoachView ? 'Отметить посещения' : 'Проверить посещения'}</button>
+            </div>
           </>
         )}
 
         {tab === 'schedule' && (
           <>
-            <h2>Календарь</h2>
+            <div className="section-head">
+              <h2 className="section-title">Календарь</h2>
+              <p className="section-subtitle">Тренировки, игры и лента уведомлений.</p>
+            </div>
             {!attendanceBoard && <div className="list-card">{attendanceBusy ? 'Загружаем...' : 'Нет данных по расписанию'}</div>}
             {attendanceBoard && (
               <div className="list-card stack">
@@ -1040,7 +1051,10 @@ export function App() {
 
         {tab === 'attendance' && (
           <>
-            <h2>Посещения</h2>
+            <div className="section-head">
+              <h2 className="section-title">Посещения</h2>
+              <p className="section-subtitle">Быстрая фиксация присутствия и подтверждение отсутствий.</p>
+            </div>
             {!attendanceBoard && <div className="list-card">{attendanceBusy ? 'Загружаем...' : 'Нет данных по посещениям'}</div>}
             {attendanceBoard && (
               <>
@@ -1111,7 +1125,10 @@ export function App() {
 
         {tab === 'payments' && (
           <>
-            <h2>Платежи</h2>
+            <div className="section-head">
+              <h2 className="section-title">Платежи</h2>
+              <p className="section-subtitle">Оплата по правилам участия и доступным каналам.</p>
+            </div>
             {!paymentOptions && <div className="list-card">{paymentBusy ? 'Загружаем...' : 'Пока нет данных по оплате'}</div>}
             {paymentOptions && <p className="muted">{paymentOptions.rule.description}</p>}
             {paymentOptions?.items.map((item) => (
@@ -1132,7 +1149,10 @@ export function App() {
 
         {tab === 'profile' && (
           <>
-            <h2>Профиль</h2>
+            <div className="section-head">
+              <h2 className="section-title">Профиль</h2>
+              <p className="section-subtitle">Роли, привязки и ссылки приглашения.</p>
+            </div>
             <p className="muted">Активная роль: {ROLE_LABELS[activeRole]}</p>
             <div className="list-card stack">
               <p className="muted">Статус привязок</p>

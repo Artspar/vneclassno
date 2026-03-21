@@ -161,6 +161,37 @@ h3 {
   background: #f8fafe;
 }
 
+
+.section-head {
+  display: grid;
+  gap: 4px;
+  padding-bottom: 2px;
+}
+
+.section-title {
+  font-size: 22px;
+  line-height: 1.2;
+  color: #1f2430;
+}
+
+.section-subtitle {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.tab-screen {
+  box-shadow: 0 8px 18px rgba(32, 46, 74, 0.06);
+}
+
+.list-card {
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.list-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(31, 48, 83, 0.08);
+}
+
 .headline-row {
   display: flex;
   justify-content: space-between;

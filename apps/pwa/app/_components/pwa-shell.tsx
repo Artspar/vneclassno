@@ -800,6 +800,10 @@ export default function PwaShell() {
         <section className="tab-screen stack">
         {tab === 'home' && (
           <>
+            <div className="section-head">
+              <h2 className="section-title">{isCoachView ? 'Панель тренера' : 'Главный экран'}</h2>
+              <p className="section-subtitle">{isCoachView ? 'Быстрые действия по группе и коммуникациям.' : 'Ключевые показатели ребенка и секции.'}</p>
+            </div>
             {isCoachView ? (
               <>
                 <div className="headline-row">
@@ -844,12 +848,19 @@ export default function PwaShell() {
                 </div>
               </>
             )}
+            <div className="inline-actions">
+              <button type="button" onClick={() => setTab('schedule')}>Открыть календарь</button>
+              <button type="button" onClick={() => setTab('attendance')}>{isCoachView ? 'Отметить посещения' : 'Проверить посещения'}</button>
+            </div>
           </>
         )}
 
         {tab === 'schedule' && (
           <>
-            <h2>Расписание</h2>
+            <div className="section-head">
+              <h2 className="section-title">Расписание</h2>
+              <p className="section-subtitle">Тренировки, игры и лента уведомлений.</p>
+            </div>
             {!attendanceBoard && <div className="list-card">{attendanceBusy ? 'Загружаем...' : 'Нет данных по расписанию'}</div>}
             {attendanceBoard && (
               <div className="list-card stack">
@@ -967,7 +978,10 @@ export default function PwaShell() {
 
         {tab === 'attendance' && (
           <>
-            <h2>Посещения</h2>
+            <div className="section-head">
+              <h2 className="section-title">Посещения</h2>
+              <p className="section-subtitle">Быстрая фиксация присутствия и подтверждение отсутствий.</p>
+            </div>
             {!attendanceBoard && <div className="list-card">{attendanceBusy ? 'Загружаем...' : 'Нет данных по посещениям'}</div>}
             {attendanceBoard && (
               <>
@@ -1038,7 +1052,10 @@ export default function PwaShell() {
 
         {tab === 'payments' && (
           <>
-            <h2>Платежи</h2>
+            <div className="section-head">
+              <h2 className="section-title">Платежи</h2>
+              <p className="section-subtitle">Оплата по правилам участия и доступным каналам.</p>
+            </div>
             {!paymentOptions && <div className="list-card">{paymentBusy ? 'Загружаем...' : 'Пока нет данных по оплате'}</div>}
             {paymentOptions && <p className="caption">{paymentOptions.rule.description}</p>}
             {paymentOptions?.items.map((item) => (
@@ -1059,7 +1076,10 @@ export default function PwaShell() {
 
         {tab === 'profile' && (
           <>
-            <h2>Профиль</h2>
+            <div className="section-head">
+              <h2 className="section-title">Профиль</h2>
+              <p className="section-subtitle">Роли, привязки и ссылки приглашения.</p>
+            </div>
             <p className="caption">Активная роль: {ROLE_LABELS[activeRole]}</p>
             <div className="list-card stack">
               <p className="caption">Статус привязок</p>
