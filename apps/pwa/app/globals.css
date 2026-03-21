@@ -564,3 +564,58 @@ button:disabled {
   font-size: 13px;
   color: rgba(255, 255, 255, 0.9);
 }
+
+
+.title-child-select-wrap {
+  max-width: 320px;
+  margin: 0 auto;
+}
+
+.title-child-select {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  font-weight: 700;
+  text-align: center;
+  border-radius: 14px;
+  padding: 10px 34px 10px 12px;
+  background-image: linear-gradient(45deg, transparent 50%, #fff 50%), linear-gradient(135deg, #fff 50%, transparent 50%);
+  background-position: calc(100% - 18px) calc(50% - 2px), calc(100% - 12px) calc(50% - 2px);
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+}
+
+.title-child-select option {
+  color: #1f2430;
+}
+
+.section-chip-row {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 0 4px;
+  scrollbar-width: none;
+}
+
+.section-chip-row::-webkit-scrollbar {
+  display: none;
+}
+
+.section-chip {
+  width: auto;
+  white-space: nowrap;
+  border-radius: 999px;
+  border: 1px solid #cfd8ea;
+  background: #eef2fb;
+  color: #4b5978;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.section-chip.active {
+  border-color: #0f7eff;
+  background: #0f7eff;
+  color: #fff;
+}

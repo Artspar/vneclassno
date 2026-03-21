@@ -780,8 +780,22 @@ export default function PwaShell() {
         </div>
         <div className="hero-logo">V</div>
         <div className="hero-title-wrap">
-          <h2>{isCoachView ? 'Тренерский режим' : activeChild ? `${activeChild.firstName} ${activeChild.lastName}` : 'Ребенок не выбран'}</h2>
-          <p>{activeSection?.name ?? 'Секция не выбрана'}</p>
+          {isCoachView ? (
+            <h2>Тренерский режим</h2>
+          ) : context.children.length > 0 ? (
+            <div className="title-child-select-wrap">
+              <select className="title-child-select" value={activeChildId} onChange={(e) => void handleChildChange(e.target.value)}>
+                {context.children.map((child) => (
+                  <option key={child.id} value={child.id}>
+                    {child.firstName} {child.lastName}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <h2>Ребенок не выбран</h2>
+          )}
+          <p>{isCoachView ? activeSection?.name ?? 'Секция не выбрана' : 'Выберите секцию ниже'}</p>
         </div>
       </section>
 
@@ -799,30 +813,23 @@ export default function PwaShell() {
       </section>
 
       <section className="content-sheet fade-in-2">
-        <div className={`context-grid compact-grid ${isCoachView ? 'coach-grid' : ''}`}>
-          {!isCoachView && (
-            <div className="stack">
-              <p className="caption">Ребенок</p>
-              <select value={activeChildId} onChange={(e) => void handleChildChange(e.target.value)}>
-                {context.children.map((child) => (
-                  <option key={child.id} value={child.id}>
-                    {child.firstName} {child.lastName}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-          <div className="stack">
-            <p className="caption">Секция</p>
-            <select value={activeSectionId} onChange={(e) => void handleSectionChange(e.target.value)}>
-              {context.sections.map((section) => (
-                <option key={section.id} value={section.id}>
-                  {section.name}
-                </option>
-              ))}
-            </select>
-          </div>
+        <div className="section-chip-row" role="tablist" aria-label="Секции">
+          {context.sections.map((section) => {
+            const isActiveSection = section.id === activeSectionId;
+            return (
+              <button
+                key={section.id}
+                type="button"
+                className={`section-chip ${isActiveSection ? 'active' : ''}`}
+                onClick={() => void handleSectionChange(section.id)}
+                aria-pressed={isActiveSection}
+              >
+                {section.name}
+              </button>
+            );
+          })}
         </div>
+
 
         {statusMessage && <p className="flow-note flow-note-success">{statusMessage}</p>}
         {error && <p className="flow-note flow-note-error">{error}</p>}
