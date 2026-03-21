@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type { UserRole } from '../domain/models.js';
 import { RbacService } from '../rbac/rbac-service.js';
 import type { IdentityStore } from '../repositories/identity-store.js';
+import { TelegramBotService } from '../telegram/telegram-bot.service.js';
 
 type NotificationType = 'training' | 'game' | 'event';
 type TargetMode = 'all' | 'selected';
@@ -33,6 +34,7 @@ export class NotificationService {
   constructor(
     private readonly identityStore: IdentityStore,
     private readonly rbacService: RbacService,
+    private readonly telegramBotService: TelegramBotService,
   ) {}
 
   async create(
@@ -99,10 +101,13 @@ export class NotificationService {
 
     this.notifications.unshift(item);
 
+    const delivery = await this.deliverToTelegram(item, roster);
+
     return {
       ...item,
       recipientsCount: childIds.length,
       channels: ['telegram', 'pwa'],
+      delivery,
     };
   }
 
@@ -148,6 +153,53 @@ export class NotificationService {
         matchedChildIds: item.childIds.filter((childId) => access.parentChildIds.includes(childId)),
         channels: ['telegram', 'pwa'],
       })),
+    };
+  }
+
+  private async deliverToTelegram(
+    item: NotificationItem,
+    roster: Array<{ id: string; firstName: string; lastName: string }>,
+  ): Promise<{ attempted: number; delivered: number; failed: number }> {
+    const section = await this.identityStore.getSectionById(item.sectionId);
+    const typeLabel = item.type === 'training' ? 'Тренировка' : item.type === 'game' ? 'Игра' : 'Мероприятие';
+
+    const targetNames = roster
+      .filter((child) => item.childIds.includes(child.id))
+      .map((child) => `${child.firstName} ${child.lastName}`);
+
+    const text = [
+      `🔔 ${typeLabel}: ${item.title}`,
+      section ? `Секция: ${section.name}` : `Секция: ${item.sectionId}`,
+      `Кому: ${item.targetMode === 'all' ? 'всем детям секции' : targetNames.join(', ')}`,
+      '',
+      item.message,
+    ].join('\n');
+
+    const chatIds = new Set<string>();
+    for (const childId of item.childIds) {
+      const parents = await this.identityStore.listParentsForChild(childId);
+      for (const parent of parents) {
+        if (parent.telegramId) {
+          chatIds.add(parent.telegramId);
+        }
+      }
+    }
+
+    let delivered = 0;
+    let failed = 0;
+    for (const chatId of chatIds) {
+      try {
+        await this.telegramBotService.sendInfo(Number(chatId), text);
+        delivered += 1;
+      } catch {
+        failed += 1;
+      }
+    }
+
+    return {
+      attempted: chatIds.size,
+      delivered,
+      failed,
     };
   }
 

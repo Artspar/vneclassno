@@ -100,6 +100,14 @@ export class InMemoryIdentityStore implements IdentityStore {
     return this.children.filter((child) => childIds.includes(child.id));
   }
 
+  async listParentsForChild(childId: string): Promise<User[]> {
+    const parentIds = this.parentChildren
+      .filter((link) => link.childId === childId)
+      .map((link) => link.parentUserId);
+
+    return this.users.filter((user) => parentIds.includes(user.id));
+  }
+
   async listChildrenBySection(sectionId: string): Promise<Child[]> {
     const childIds = this.childSections.filter((link) => link.sectionId === sectionId).map((link) => link.childId);
     return this.children.filter((child) => childIds.includes(child.id));
