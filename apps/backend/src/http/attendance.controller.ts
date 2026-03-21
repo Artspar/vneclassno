@@ -33,6 +33,15 @@ export class AttendanceController {
     return this.attendanceService.bulkUpdate(userId, body);
   }
 
+  @Post('sessions/participation/confirm')
+  async confirmParticipation(
+    @Req() request: Request,
+    @Body() body: { sessionId?: string; childId?: string; decision?: 'confirmed' | 'declined' },
+  ) {
+    const userId = requireUserId(request, this.tokenService);
+    return this.attendanceService.confirmParticipation(userId, body);
+  }
+
   @Post('absence/request')
   async requestAbsence(
     @Req() request: Request,

@@ -5,6 +5,7 @@ import type { IdentityStore } from '../repositories/identity-store.js';
 
 type AttendanceStatus = 'expected' | 'present' | 'late' | 'absent';
 type SessionStatus = 'scheduled' | 'live' | 'completed';
+export type ParticipationStatus = 'confirmed' | 'declined';
 
 interface SessionItem {
   id: string;
@@ -19,6 +20,14 @@ interface AttendanceMark {
   sessionId: string;
   childId: string;
   status: AttendanceStatus;
+  updatedByUserId: string;
+  updatedAt: string;
+}
+
+interface ParticipationEntry {
+  sessionId: string;
+  childId: string;
+  status: ParticipationStatus;
   updatedByUserId: string;
   updatedAt: string;
 }
@@ -47,6 +56,7 @@ export class AttendanceService {
   private initialized = false;
   private sessions: SessionItem[] = [];
   private marks: AttendanceMark[] = [];
+  private participations: ParticipationEntry[] = [];
   private absences: AbsenceRequest[] = [];
 
   constructor(private readonly identityStore: IdentityStore) {}
@@ -69,12 +79,14 @@ export class AttendanceService {
 
     const items = roster.map((child) => {
       const mark = this.marks.find((entry) => entry.sessionId === session.id && entry.childId === child.id);
+      const participation = this.participations.find((entry) => entry.sessionId === session.id && entry.childId === child.id);
       const absence = this.absences.find((entry) => entry.sessionId === session.id && entry.childId === child.id);
 
       return {
         childId: child.id,
         childName: `${child.firstName} ${child.lastName}`,
         status: mark?.status ?? 'expected',
+        participationStatus: participation?.status,
         onLesson: session.status === 'live' && (mark?.status === 'present' || mark?.status === 'late'),
         absenceId: absence?.id,
         absenceStatus: absence?.status,
@@ -90,6 +102,67 @@ export class AttendanceService {
       canManage,
       items,
     };
+  }
+
+  async confirmParticipation(
+    userId: string,
+    payload: {
+      sessionId?: string;
+      childId?: string;
+      decision?: ParticipationStatus;
+    },
+  ) {
+    const sessionId = payload.sessionId?.trim();
+    const childId = payload.childId?.trim();
+    const decision = payload.decision;
+
+    if (!sessionId || !childId || (decision !== 'confirmed' && decision !== 'declined')) {
+      throw new BadRequestException('sessionId, childId and decision (confirmed|declined) are required');
+    }
+
+    const session = this.sessions.find((item) => item.id === sessionId);
+    if (!session) {
+      throw new NotFoundException('Session not found');
+    }
+
+    const access = await this.resolveAccess(userId);
+    const isParentChild = access.parentChildIds.includes(childId);
+    const canManage = this.canManageSection(access, session.sectionId);
+    if (!isParentChild && !canManage) {
+      throw new ForbiddenException('Нет прав подтвердить участие для этого ребенка');
+    }
+
+    const roster = await this.identityStore.listChildrenBySection(session.sectionId);
+    if (!roster.some((child) => child.id === childId)) {
+      throw new BadRequestException('Ребенок не привязан к секции сессии');
+    }
+
+    const existing = this.participations.find((entry) => entry.sessionId === session.id && entry.childId === childId);
+    if (existing) {
+      existing.status = decision;
+      existing.updatedByUserId = userId;
+      existing.updatedAt = new Date().toISOString();
+    } else {
+      this.participations.push({
+        sessionId: session.id,
+        childId,
+        status: decision,
+        updatedByUserId: userId,
+        updatedAt: new Date().toISOString(),
+      });
+    }
+
+    return this.getBoard(userId, session.sectionId);
+  }
+
+  async getSectionSession(sectionId: string): Promise<SessionItem> {
+    await this.ensureSeeded();
+    return this.pickSessionForSection(sectionId);
+  }
+
+  async getParticipationStatus(sessionId: string, childId: string): Promise<ParticipationStatus | undefined> {
+    await this.ensureSeeded();
+    return this.participations.find((entry) => entry.sessionId === sessionId && entry.childId === childId)?.status;
   }
 
   async bulkUpdate(
@@ -273,9 +346,7 @@ export class AttendanceService {
   private async resolveAccess(userId: string): Promise<AccessContext> {
     const assignments = await this.identityStore.listRoleAssignments(userId);
     const roles = [...new Set(assignments.map((item) => item.role))];
-    const sectionIds = [
-      ...new Set(assignments.filter((item) => item.sectionId).map((item) => String(item.sectionId))),
-    ];
+    const sectionIds = [...new Set(assignments.filter((item) => item.sectionId).map((item) => String(item.sectionId)))];
 
     const parentChildren = await this.identityStore.listChildrenForParent(userId);
 

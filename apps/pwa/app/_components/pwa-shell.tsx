@@ -4,8 +4,12 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import {
   bulkUpdateAttendance,
+  confirmParticipation,
+  createNotification,
   decideAbsence,
   getAttendanceBoard,
+  getNotifications,
+  getPaymentOptions,
   getContextSelection,
   getMeContext,
   getPreferences,
@@ -17,7 +21,9 @@ import {
   setActiveRole as setActiveRolePreference,
   type AttendanceBoard,
   type MeContextResponse,
+  type NotificationFeedResponse,
   type OtpChannel,
+  type PaymentOptionsResponse,
 } from '../../lib/api';
 
 const ACCESS_TOKEN_KEY = 'vneclassno_pwa_access_token';
@@ -124,6 +130,15 @@ export default function PwaShell() {
   const [activeSectionId, setActiveSectionId] = useState('');
   const [attendanceBoard, setAttendanceBoard] = useState<AttendanceBoard | null>(null);
   const [attendanceBusy, setAttendanceBusy] = useState(false);
+  const [notificationFeed, setNotificationFeed] = useState<NotificationFeedResponse | null>(null);
+  const [notificationBusy, setNotificationBusy] = useState(false);
+  const [paymentOptions, setPaymentOptions] = useState<PaymentOptionsResponse | null>(null);
+  const [paymentBusy, setPaymentBusy] = useState(false);
+  const [notificationType, setNotificationType] = useState<'training' | 'game' | 'event'>('training');
+  const [notificationTitle, setNotificationTitle] = useState('');
+  const [notificationMessage, setNotificationMessage] = useState('');
+  const [notificationTargetMode, setNotificationTargetMode] = useState<'all' | 'selected'>('all');
+  const [notificationChildIds, setNotificationChildIds] = useState<string[]>([]);
   const [linkBusy, setLinkBusy] = useState(false);
   const [telegramLinkUrl, setTelegramLinkUrl] = useState('');
 
@@ -215,6 +230,101 @@ export default function PwaShell() {
     }
   }
 
+  async function loadNotificationsFeed() {
+    if (!accessToken) {
+      return;
+    }
+
+    setNotificationBusy(true);
+    setError('');
+    try {
+      const feed = await getNotifications(accessToken, {
+        sectionId: activeSectionId || undefined,
+        childId: isCoachView ? undefined : activeChildId || undefined,
+      });
+      setNotificationFeed(feed);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Не удалось загрузить уведомления');
+    } finally {
+      setNotificationBusy(false);
+    }
+  }
+
+  async function loadPayments() {
+    if (!accessToken) {
+      return;
+    }
+
+    setPaymentBusy(true);
+    setError('');
+    try {
+      const data = await getPaymentOptions(accessToken, {
+        sectionId: activeSectionId || undefined,
+        childId: isCoachView ? undefined : activeChildId || undefined,
+      });
+      setPaymentOptions(data);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Не удалось загрузить оплаты');
+    } finally {
+      setPaymentBusy(false);
+    }
+  }
+
+  async function handleParticipationDecision(decision: 'confirmed' | 'declined') {
+    if (!attendanceBoard || !activeChildId) {
+      return;
+    }
+
+    setAttendanceBusy(true);
+    setError('');
+    try {
+      const board = await confirmParticipation(accessToken, {
+        sessionId: attendanceBoard.session.id,
+        childId: activeChildId,
+        decision,
+      });
+      setAttendanceBoard(board);
+      await loadPayments();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Не удалось обновить участие');
+    } finally {
+      setAttendanceBusy(false);
+    }
+  }
+
+  function toggleNotificationChild(childId: string) {
+    setNotificationChildIds((current) =>
+      current.includes(childId) ? current.filter((value) => value !== childId) : [...current, childId],
+    );
+  }
+
+  async function sendNotification() {
+    if (!accessToken || !activeSectionId) {
+      return;
+    }
+
+    setNotificationBusy(true);
+    setError('');
+    try {
+      await createNotification(accessToken, {
+        sectionId: activeSectionId,
+        type: notificationType,
+        title: notificationTitle.trim(),
+        message: notificationMessage.trim(),
+        targetMode: notificationTargetMode,
+        childIds: notificationTargetMode === 'selected' ? notificationChildIds : undefined,
+      });
+      setNotificationTitle('');
+      setNotificationMessage('');
+      setNotificationChildIds([]);
+      await loadNotificationsFeed();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Не удалось отправить уведомление');
+    } finally {
+      setNotificationBusy(false);
+    }
+  }
+
   async function setAttendanceStatus(childId: string, status: 'present' | 'late' | 'absent') {
     if (!attendanceBoard) {
       return;
@@ -274,12 +384,18 @@ export default function PwaShell() {
   }
 
   useEffect(() => {
-    if (tab !== 'attendance') {
-      return;
+    if (tab === 'attendance' || tab === 'schedule') {
+      void loadAttendanceBoard();
     }
 
-    void loadAttendanceBoard();
-  }, [tab, accessToken, activeSectionId]);
+    if (tab === 'schedule') {
+      void loadNotificationsFeed();
+    }
+
+    if (tab === 'payments') {
+      void loadPayments();
+    }
+  }, [tab, accessToken, activeSectionId, activeChildId, activeRole]);
 
   const activeChild = context?.children.find((child) => child.id === activeChildId) ?? context?.children[0];
   const activeSection = context?.sections.find((section) => section.id === activeSectionId) ?? context?.sections[0];
@@ -496,9 +612,76 @@ export default function PwaShell() {
         {tab === 'schedule' && (
           <>
             <h2>Расписание</h2>
-            <p className="caption">Вт 18:00, Чт 18:00, Сб 11:00</p>
-            <div className="list-card">Сегодня 18:00 · Тренировка · Зал 2</div>
-            <div className="list-card">Воскресенье 13:30 · Игра · Стадион А</div>
+            {!attendanceBoard && <div className="list-card">{attendanceBusy ? 'Загружаем...' : 'Нет данных по расписанию'}</div>}
+            {attendanceBoard && (
+              <div className="list-card stack">
+                <strong>{attendanceBoard.session.title}</strong>
+                <p className="caption">Начало: {new Date(attendanceBoard.session.startsAt).toLocaleString('ru-RU')}</p>
+                <p className="caption">Окончание: {new Date(attendanceBoard.session.endsAt).toLocaleString('ru-RU')}</p>
+                {!isCoachView && activeChildId && (
+                  <>
+                    <p className="caption">
+                      Участие: {attendanceBoard.items.find((item) => item.childId === activeChildId)?.participationStatus ?? 'не подтверждено'}
+                    </p>
+                    <div className="inline-actions">
+                      <button disabled={attendanceBusy} onClick={() => void handleParticipationDecision('confirmed')}>
+                        Подтвердить участие
+                      </button>
+                      <button disabled={attendanceBusy} onClick={() => void handleParticipationDecision('declined')}>
+                        Не участвуем
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {isCoachView && attendanceBoard && (
+              <div className="list-card stack">
+                <h3>Отправить уведомление</h3>
+                <select value={notificationType} onChange={(e) => setNotificationType(e.target.value as 'training' | 'game' | 'event')}>
+                  <option value="training">Тренировка</option>
+                  <option value="game">Игра</option>
+                  <option value="event">Мероприятие</option>
+                </select>
+                <input value={notificationTitle} onChange={(e) => setNotificationTitle(e.target.value)} placeholder="Заголовок" />
+                <textarea value={notificationMessage} onChange={(e) => setNotificationMessage(e.target.value)} placeholder="Текст уведомления" />
+                <select value={notificationTargetMode} onChange={(e) => setNotificationTargetMode(e.target.value as 'all' | 'selected')}>
+                  <option value="all">Всем детям секции</option>
+                  <option value="selected">Только выбранным</option>
+                </select>
+                {notificationTargetMode === 'selected' && (
+                  <div className="stack">
+                    {attendanceBoard.items.map((item) => (
+                      <label key={item.childId} className="caption">
+                        <input
+                          type="checkbox"
+                          checked={notificationChildIds.includes(item.childId)}
+                          onChange={() => toggleNotificationChild(item.childId)}
+                        />{' '}
+                        {item.childName}
+                      </label>
+                    ))}
+                  </div>
+                )}
+                <button disabled={notificationBusy} onClick={() => void sendNotification()}>
+                  {notificationBusy ? 'Отправляем...' : 'Отправить уведомление'}
+                </button>
+              </div>
+            )}
+
+            <h3>Лента уведомлений</h3>
+            {!notificationFeed && <div className="list-card">{notificationBusy ? 'Загружаем...' : 'Пока уведомлений нет'}</div>}
+            {notificationFeed?.items.map((item) => (
+              <div key={item.id} className="list-card stack">
+                <div className="headline-row">
+                  <strong>{item.title}</strong>
+                  <span className="status-pill">{item.type}</span>
+                </div>
+                <p>{item.message}</p>
+                <p className="caption">Каналы: {item.channels.join(', ')} · {new Date(item.createdAt).toLocaleString('ru-RU')}</p>
+              </div>
+            ))}
           </>
         )}
 
@@ -576,9 +759,21 @@ export default function PwaShell() {
         {tab === 'payments' && (
           <>
             <h2>Платежи</h2>
-            <div className="list-card">Оплачено: 4 500 ₽ · auto_link</div>
-            <div className="list-card">На проверке: 2 000 ₽ · manual_transfer</div>
-            <button>Оплатить по СБП</button>
+            {!paymentOptions && <div className="list-card">{paymentBusy ? 'Загружаем...' : 'Пока нет данных по оплате'}</div>}
+            {paymentOptions && <p className="caption">{paymentOptions.rule.description}</p>}
+            {paymentOptions?.items.map((item) => (
+              <div key={`${item.childId}:${item.sectionId}`} className="list-card stack">
+                <strong>{item.childName}</strong>
+                <p className="caption">{item.sessionTitle}</p>
+                <p className="caption">Срок: {new Date(item.dueAt).toLocaleString('ru-RU')}</p>
+                <p className="caption">Участие: {item.participationStatus}</p>
+                <p className="caption">Способ: {item.recommendedMethod}</p>
+                {!item.canPayNow && <p className="caption">{item.lockedReason}</p>}
+                {item.canPayNow && (
+                  <button>{item.canPayEarly ? 'Оплатить заранее' : 'Оплатить'}</button>
+                )}
+              </div>
+            ))}
           </>
         )}
 

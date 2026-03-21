@@ -9,11 +9,15 @@ import { ContextController } from './http/context.controller.js';
 import { HealthController } from './http/health.controller.js';
 import { InvitesController } from './http/invites.controller.js';
 import { LinkingController } from './http/linking.controller.js';
+import { NotificationsController } from './http/notifications.controller.js';
+import { PaymentsController } from './http/payments.controller.js';
 import { PreferencesController } from './http/preferences.controller.js';
 import { TelegramController } from './http/telegram.controller.js';
 import { InviteService } from './invites/invite-service.js';
 import { AccountLinkService } from './linking/account-link-service.js';
+import { NotificationService } from './notifications/notification-service.js';
 import { OtpService } from './otp/otp-service.js';
+import { PaymentService } from './payments/payment-service.js';
 import { UserPreferencesService } from './preferences/user-preferences-service.js';
 import { PrismaService } from './prisma/prisma.service.js';
 import { type IdentityStore } from './repositories/identity-store.js';
@@ -24,7 +28,18 @@ import { TelegramBotService } from './telegram/telegram-bot.service.js';
 import { IDENTITY_STORE } from './tokens.js';
 
 @Module({
-  controllers: [AuthController, AttendanceController, ContextController, HealthController, InvitesController, LinkingController, PreferencesController, TelegramController],
+  controllers: [
+    AuthController,
+    AttendanceController,
+    ContextController,
+    HealthController,
+    InvitesController,
+    LinkingController,
+    NotificationsController,
+    PaymentsController,
+    PreferencesController,
+    TelegramController,
+  ],
   providers: [
     PrismaService,
     PrismaIdentityStore,
@@ -87,6 +102,16 @@ import { IDENTITY_STORE } from './tokens.js';
       provide: AccountLinkService,
       inject: [IDENTITY_STORE, OtpService],
       useFactory: (store: IdentityStore, otpService: OtpService) => new AccountLinkService(store, otpService),
+    },
+    {
+      provide: NotificationService,
+      inject: [IDENTITY_STORE, RbacService],
+      useFactory: (store: IdentityStore, rbac: RbacService) => new NotificationService(store, rbac),
+    },
+    {
+      provide: PaymentService,
+      inject: [IDENTITY_STORE, AttendanceService],
+      useFactory: (store: IdentityStore, attendanceService: AttendanceService) => new PaymentService(store, attendanceService),
     },
   ],
 })

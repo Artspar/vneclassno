@@ -60,12 +60,49 @@ export type AttendanceBoard = {
     childId: string;
     childName: string;
     status: 'expected' | 'present' | 'late' | 'absent';
+    participationStatus?: 'confirmed' | 'declined';
     onLesson: boolean;
     absenceId?: string;
     absenceStatus?: 'pending' | 'approved' | 'rejected';
     isExcused?: boolean;
   }>;
 };
+
+export type NotificationFeedResponse = {
+  items: Array<{
+    id: string;
+    sectionId: string;
+    type: 'training' | 'game' | 'event';
+    title: string;
+    message: string;
+    targetMode: 'all' | 'selected';
+    childIds: string[];
+    matchedChildIds?: string[];
+    createdAt: string;
+    channels: Array<'telegram' | 'pwa'>;
+  }>;
+};
+
+export type PaymentOptionsResponse = {
+  items: Array<{
+    childId: string;
+    childName: string;
+    sectionId: string;
+    sessionId: string;
+    sessionTitle: string;
+    dueAt: string;
+    participationStatus: 'confirmed' | 'declined' | 'not_confirmed';
+    duePassed: boolean;
+    canPayNow: boolean;
+    canPayEarly: boolean;
+    lockedReason?: string;
+    recommendedMethod: 'auto_link' | 'auto_qr' | 'manual_transfer';
+  }>;
+  rule: {
+    description: string;
+  };
+};
+
 
 export type OtpChannel = 'sms' | 'telegram' | 'vk';
 
@@ -301,6 +338,85 @@ export function setContextSelection(
 export function requestTelegramLink(accessToken: string): Promise<{ startUrl: string; token: string; expiresInSec: number }> {
   return request<{ startUrl: string; token: string; expiresInSec: number }>('/me/link/telegram/request', {
     method: 'POST',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+    },
+  });
+}
+
+
+export function confirmParticipation(
+  accessToken: string,
+  payload: { sessionId: string; childId: string; decision: 'confirmed' | 'declined' },
+): Promise<AttendanceBoard> {
+  return request<AttendanceBoard>('/sessions/participation/confirm', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(payload),
+  });
+}
+
+
+export function getNotifications(
+  accessToken: string,
+  query?: { sectionId?: string; childId?: string },
+): Promise<NotificationFeedResponse> {
+  const params = new URLSearchParams();
+  if (query?.sectionId) {
+    params.set('sectionId', query.sectionId);
+  }
+  if (query?.childId) {
+    params.set('childId', query.childId);
+  }
+
+  const suffix = params.toString() ? `?${params.toString()}` : '';
+  return request<NotificationFeedResponse>(`/notifications${suffix}`, {
+    method: 'GET',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+    },
+  });
+}
+
+
+export function createNotification(
+  accessToken: string,
+  payload: {
+    sectionId: string;
+    type: 'training' | 'game' | 'event';
+    title: string;
+    message: string;
+    targetMode: 'all' | 'selected';
+    childIds?: string[];
+  },
+): Promise<{ id: string; recipientsCount: number }> {
+  return request<{ id: string; recipientsCount: number }>('/notifications', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(payload),
+  });
+}
+
+
+export function getPaymentOptions(
+  accessToken: string,
+  query?: { sectionId?: string; childId?: string },
+): Promise<PaymentOptionsResponse> {
+  const params = new URLSearchParams();
+  if (query?.sectionId) {
+    params.set('sectionId', query.sectionId);
+  }
+  if (query?.childId) {
+    params.set('childId', query.childId);
+  }
+
+  const suffix = params.toString() ? `?${params.toString()}` : '';
+  return request<PaymentOptionsResponse>(`/payments/options${suffix}`, {
+    method: 'GET',
     headers: {
       authorization: `Bearer ${accessToken}`,
     },
