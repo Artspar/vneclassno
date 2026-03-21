@@ -4,6 +4,8 @@ import { getStartTokenFromTelegram, getStartTokenFromUrl, getTelegramWebApp } fr
 
 type Tab = 'home' | 'schedule' | 'attendance' | 'payments' | 'profile';
 
+const ACCESS_TOKEN_KEY = 'vneclassno_tg_access_token';
+
 const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'home', label: 'Главная' },
   { id: 'schedule', label: 'Календарь' },
@@ -11,6 +13,30 @@ const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'payments', label: 'Платежи' },
   { id: 'profile', label: 'Профиль' },
 ];
+
+function isTransient(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  const message = error.message.toLowerCase();
+  return message.includes('fetch') || message.includes('timeout') || message.includes('долго отвечает');
+}
+
+async function withRetry<T>(fn: () => Promise<T>, retries = 1, delayMs = 1200): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      if (attempt === retries || !isTransient(error)) {
+        throw error;
+      }
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+  throw lastError;
+}
 
 export function App() {
   const [tab, setTab] = useState<Tab>('home');
@@ -50,10 +76,27 @@ export function App() {
         throw new Error('Не удалось получить Telegram init data');
       }
 
-      const auth = await loginTelegram(telegramInitData);
-      setAccessToken(auth.accessToken);
+      const storedToken = window.localStorage.getItem(ACCESS_TOKEN_KEY) ?? '';
+      let resolvedToken = storedToken;
+      let me: MeContext | null = null;
 
-      const me = await meContext(auth.accessToken);
+      if (storedToken) {
+        try {
+          me = await withRetry(() => meContext(storedToken), 1);
+        } catch {
+          window.localStorage.removeItem(ACCESS_TOKEN_KEY);
+          resolvedToken = '';
+        }
+      }
+
+      if (!me) {
+        const auth = await withRetry(() => loginTelegram(telegramInitData), 1);
+        resolvedToken = auth.accessToken;
+        window.localStorage.setItem(ACCESS_TOKEN_KEY, resolvedToken);
+        me = await withRetry(() => meContext(resolvedToken), 1);
+      }
+
+      setAccessToken(resolvedToken);
       setContext(me);
       setActiveChildId(me.activeChildId ?? me.children[0]?.id ?? '');
       setActiveSectionId(me.activeSectionId ?? me.sections[0]?.id ?? '');
@@ -64,7 +107,7 @@ export function App() {
 
       const token = getStartTokenFromUrl() ?? getStartTokenFromTelegram(wa) ?? '';
       if (token) {
-        const invite = await resolveInvite(token);
+        const invite = await withRetry(() => resolveInvite(token), 1);
         if (invite.invite.status === 'active') {
           setInviteToken(token);
           setStatusMessage('Найден инвайт: можно сразу отправить заявку из вкладки Главная.');
