@@ -73,3 +73,27 @@ export interface JoinRequest {
   comment?: string;
   createdAt: string;
 }
+
+
+export type NotificationType = 'training' | 'game' | 'event';
+export type NotificationTargetMode = 'all' | 'selected';
+
+export interface NotificationDelivery {
+  attempted: number;
+  delivered: number;
+  failed: number;
+}
+
+export interface Notification {
+  id: string;
+  sectionId: string;
+  sessionId?: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  targetMode: NotificationTargetMode;
+  childIds: string[];
+  createdByUserId: string;
+  createdAt: string;
+  delivery: NotificationDelivery;
+}

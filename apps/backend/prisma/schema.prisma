@@ -32,6 +32,17 @@ enum JoinRequestStatus {
   auto_approved
 }
 
+enum NotificationType {
+  training
+  game
+  event
+}
+
+enum NotificationTargetMode {
+  all
+  selected
+}
+
 model User {
   id              String           @id @default(uuid())
   phone           String?          @unique
@@ -45,8 +56,10 @@ model User {
   parentLinks     ParentChild[]    @relation("ParentToChild")
   contexts        ParentContext[]
   invitesCreated  Invite[]         @relation("InviteCreator")
-  joinCreated     JoinRequest[]    @relation("JoinRequestCreator")
-  joinDecided     JoinRequest[]    @relation("JoinRequestDecider")
+  joinCreated          JoinRequest[]      @relation("JoinRequestCreator")
+  joinDecided          JoinRequest[]      @relation("JoinRequestDecider")
+  notificationsCreated Notification[]     @relation("NotificationCreator")
+  notificationReads    NotificationRead[]
 }
 
 model RoleAssignment {
@@ -69,6 +82,7 @@ model Section {
   childLinks               ChildSection[]
   invites                  Invite[]
   joinRequests             JoinRequest[]
+  notifications            Notification[]
 }
 
 model Child {
@@ -139,4 +153,38 @@ model JoinRequest {
   child           Child             @relation(fields: [childId], references: [id], onDelete: Cascade)
   createdBy       User              @relation("JoinRequestCreator", fields: [createdByUserId], references: [id], onDelete: Cascade)
   decidedBy       User?             @relation("JoinRequestDecider", fields: [decidedByUserId], references: [id], onDelete: SetNull)
+}
+
+
+model Notification {
+  id              String                 @id @default(uuid())
+  sectionId       String
+  sessionId       String?
+  type            NotificationType
+  title           String
+  message         String
+  targetMode      NotificationTargetMode
+  childIds        String[]
+  createdByUserId String
+  createdAt       DateTime               @default(now())
+  deliveryAttempted Int                  @default(0)
+  deliveryDelivered Int                  @default(0)
+  deliveryFailed  Int                    @default(0)
+  section         Section                @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  createdBy       User                   @relation("NotificationCreator", fields: [createdByUserId], references: [id], onDelete: Cascade)
+  reads           NotificationRead[]
+
+  @@index([sectionId, createdAt])
+}
+
+model NotificationRead {
+  id             String       @id @default(uuid())
+  notificationId String
+  userId         String
+  readAt         DateTime     @default(now())
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([notificationId, userId])
+  @@index([userId, readAt])
 }

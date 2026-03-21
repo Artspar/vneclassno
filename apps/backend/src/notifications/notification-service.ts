@@ -1,33 +1,12 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { AttendanceService } from '../attendance/attendance-service.js';
-import { randomUUID } from 'node:crypto';
-import type { UserRole } from '../domain/models.js';
+import type { Notification as NotificationEntity, UserRole } from '../domain/models.js';
 import { RbacService } from '../rbac/rbac-service.js';
 import type { IdentityStore } from '../repositories/identity-store.js';
 import { TelegramBotService } from '../telegram/telegram-bot.service.js';
 
 type NotificationType = 'training' | 'game' | 'event';
 type TargetMode = 'all' | 'selected';
-
-interface NotificationDelivery {
-  attempted: number;
-  delivered: number;
-  failed: number;
-}
-
-interface NotificationItem {
-  id: string;
-  sectionId: string;
-  sessionId?: string;
-  type: NotificationType;
-  title: string;
-  message: string;
-  targetMode: TargetMode;
-  childIds: string[];
-  createdByUserId: string;
-  createdAt: string;
-  delivery: NotificationDelivery;
-}
 
 interface AccessContext {
   roles: UserRole[];
@@ -38,9 +17,6 @@ interface AccessContext {
 
 @Injectable()
 export class NotificationService {
-  private readonly notifications: NotificationItem[] = [];
-  private readonly readByNotificationId = new Map<string, Set<string>>();
-
   constructor(
     private readonly identityStore: IdentityStore,
     private readonly rbacService: RbacService,
@@ -105,27 +81,17 @@ export class NotificationService {
 
     const delivery = await this.deliverToTelegram(
       {
-        id: randomUUID(),
         sectionId,
-        sessionId,
         type,
         title,
         message,
         targetMode,
         childIds,
-        createdByUserId: userId,
-        createdAt: new Date().toISOString(),
-        delivery: {
-          attempted: 0,
-          delivered: 0,
-          failed: 0,
-        },
       },
       roster,
     );
 
-    const item: NotificationItem = {
-      id: randomUUID(),
+    const item = await this.identityStore.createNotification({
       sectionId,
       sessionId,
       type,
@@ -134,16 +100,13 @@ export class NotificationService {
       targetMode,
       childIds,
       createdByUserId: userId,
-      createdAt: new Date().toISOString(),
       delivery,
-    };
-
-    this.notifications.unshift(item);
+    });
 
     return {
       ...item,
       recipientsCount: childIds.length,
-      channels: ['telegram', 'pwa'],
+      channels: ['telegram', 'pwa'] as const,
     };
   }
 
@@ -158,15 +121,16 @@ export class NotificationService {
     const sectionFilter = filters.sectionId?.trim();
     const childFilter = filters.childId?.trim();
 
-    const visible = this.notifications.filter((item) => this.isVisibleForUser(item, access, sectionFilter, childFilter));
+    const all = await this.identityStore.listNotifications({ sectionId: sectionFilter || undefined });
+    const visible = all.filter((item) => this.isVisibleForUser(item, access, undefined, childFilter));
+
+    const readIdsSet = new Set(await this.identityStore.listReadNotificationIds(userId, visible.map((item) => item.id)));
 
     const items = await Promise.all(
       visible.map(async (item) => {
         const matchedChildIds = item.childIds.filter((childId) => access.parentChildIds.includes(childId));
         const isManager = access.isSuperAdmin || this.canManageSection(access, item.sectionId);
-
-        const readBy = this.readByNotificationId.get(item.id);
-        const isRead = isManager ? false : (readBy?.has(userId) ?? false);
+        const isRead = isManager ? false : readIdsSet.has(item.id);
 
         let participationSummary:
           | {
@@ -217,7 +181,7 @@ export class NotificationService {
   }
 
   async markRead(userId: string, notificationId: string) {
-    const item = this.notifications.find((entry) => entry.id === notificationId);
+    const item = await this.identityStore.getNotificationById(notificationId);
     if (!item) {
       throw new BadRequestException('Notification not found');
     }
@@ -232,10 +196,7 @@ export class NotificationService {
       return { id: notificationId, isRead: false };
     }
 
-    const readBy = this.readByNotificationId.get(notificationId) ?? new Set<string>();
-    readBy.add(userId);
-    this.readByNotificationId.set(notificationId, readBy);
-
+    await this.identityStore.markNotificationRead(userId, notificationId);
     return {
       id: notificationId,
       isRead: true,
@@ -243,9 +204,9 @@ export class NotificationService {
   }
 
   private async deliverToTelegram(
-    item: NotificationItem,
+    item: Pick<NotificationEntity, 'sectionId' | 'type' | 'title' | 'message' | 'targetMode' | 'childIds'>,
     roster: Array<{ id: string; firstName: string; lastName: string }>,
-  ): Promise<NotificationDelivery> {
+  ): Promise<NotificationEntity['delivery']> {
     const section = await this.identityStore.getSectionById(item.sectionId);
     const typeLabel = item.type === 'training' ? 'Тренировка' : item.type === 'game' ? 'Игра' : 'Мероприятие';
 
@@ -318,7 +279,7 @@ export class NotificationService {
   }
 
   private isVisibleForUser(
-    item: NotificationItem,
+    item: NotificationEntity,
     access: AccessContext,
     sectionFilter?: string,
     childFilter?: string,

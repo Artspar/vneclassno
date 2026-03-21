@@ -5,6 +5,7 @@ import type {
   Child,
   Invite,
   JoinRequest,
+  Notification,
   ParentContext,
   RoleAssignment,
   Section,
@@ -466,4 +467,144 @@ export class PrismaIdentityStore implements IdentityStore {
       createdAt: updated.createdAt.toISOString(),
     };
   }
+
+
+  async createNotification(input: {
+    sectionId: string;
+    sessionId?: string;
+    type: Notification['type'];
+    title: string;
+    message: string;
+    targetMode: Notification['targetMode'];
+    childIds: string[];
+    createdByUserId: string;
+    delivery: Notification['delivery'];
+  }): Promise<Notification> {
+    const created = await this.prisma.notification.create({
+      data: {
+        sectionId: input.sectionId,
+        sessionId: input.sessionId ?? null,
+        type: input.type,
+        title: input.title,
+        message: input.message,
+        targetMode: input.targetMode,
+        childIds: input.childIds,
+        createdByUserId: input.createdByUserId,
+        deliveryAttempted: input.delivery.attempted,
+        deliveryDelivered: input.delivery.delivered,
+        deliveryFailed: input.delivery.failed,
+      },
+    });
+
+    return {
+      id: created.id,
+      sectionId: created.sectionId,
+      sessionId: created.sessionId ?? undefined,
+      type: created.type,
+      title: created.title,
+      message: created.message,
+      targetMode: created.targetMode,
+      childIds: created.childIds,
+      createdByUserId: created.createdByUserId,
+      createdAt: created.createdAt.toISOString(),
+      delivery: {
+        attempted: created.deliveryAttempted,
+        delivered: created.deliveryDelivered,
+        failed: created.deliveryFailed,
+      },
+    };
+  }
+
+  async listNotifications(filters?: { sectionId?: string }): Promise<Notification[]> {
+    const rows = await this.prisma.notification.findMany({
+      where: {
+        sectionId: filters?.sectionId ? filters.sectionId : undefined,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    return rows.map((row) => ({
+      id: row.id,
+      sectionId: row.sectionId,
+      sessionId: row.sessionId ?? undefined,
+      type: row.type,
+      title: row.title,
+      message: row.message,
+      targetMode: row.targetMode,
+      childIds: row.childIds,
+      createdByUserId: row.createdByUserId,
+      createdAt: row.createdAt.toISOString(),
+      delivery: {
+        attempted: row.deliveryAttempted,
+        delivered: row.deliveryDelivered,
+        failed: row.deliveryFailed,
+      },
+    }));
+  }
+
+  async getNotificationById(notificationId: string): Promise<Notification | undefined> {
+    const row = await this.prisma.notification.findUnique({ where: { id: notificationId } });
+    if (!row) {
+      return undefined;
+    }
+
+    return {
+      id: row.id,
+      sectionId: row.sectionId,
+      sessionId: row.sessionId ?? undefined,
+      type: row.type,
+      title: row.title,
+      message: row.message,
+      targetMode: row.targetMode,
+      childIds: row.childIds,
+      createdByUserId: row.createdByUserId,
+      createdAt: row.createdAt.toISOString(),
+      delivery: {
+        attempted: row.deliveryAttempted,
+        delivered: row.deliveryDelivered,
+        failed: row.deliveryFailed,
+      },
+    };
+  }
+
+  async markNotificationRead(userId: string, notificationId: string): Promise<void> {
+    await this.prisma.notificationRead.upsert({
+      where: {
+        notificationId_userId: {
+          notificationId,
+          userId,
+        },
+      },
+      update: {
+        readAt: new Date(),
+      },
+      create: {
+        notificationId,
+        userId,
+      },
+    });
+  }
+
+  async listReadNotificationIds(userId: string, notificationIds: string[]): Promise<string[]> {
+    if (notificationIds.length === 0) {
+      return [];
+    }
+
+    const rows = await this.prisma.notificationRead.findMany({
+      where: {
+        userId,
+        notificationId: {
+          in: notificationIds,
+        },
+      },
+      select: {
+        notificationId: true,
+      },
+    });
+
+    return rows.map((row) => row.notificationId);
+  }
+
 }

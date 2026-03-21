@@ -2,6 +2,7 @@ import type {
   Child,
   Invite,
   JoinRequest,
+  Notification,
   ParentContext,
   RoleAssignment,
   Section,
@@ -55,4 +56,20 @@ export interface IdentityStore {
     decision: 'approved' | 'rejected';
     comment?: string;
   }): Promise<JoinRequest>;
+
+  createNotification(input: {
+    sectionId: string;
+    sessionId?: string;
+    type: Notification['type'];
+    title: string;
+    message: string;
+    targetMode: Notification['targetMode'];
+    childIds: string[];
+    createdByUserId: string;
+    delivery: Notification['delivery'];
+  }): Promise<Notification>;
+  listNotifications(filters?: { sectionId?: string }): Promise<Notification[]>;
+  getNotificationById(notificationId: string): Promise<Notification | undefined>;
+  markNotificationRead(userId: string, notificationId: string): Promise<void>;
+  listReadNotificationIds(userId: string, notificationIds: string[]): Promise<string[]>;
 }

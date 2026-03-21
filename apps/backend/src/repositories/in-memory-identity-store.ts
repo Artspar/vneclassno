@@ -4,6 +4,7 @@ import type {
   ChildSectionLink,
   Invite,
   JoinRequest,
+  Notification,
   ParentChildLink,
   ParentContext,
   RoleAssignment,
@@ -22,6 +23,8 @@ export class InMemoryIdentityStore implements IdentityStore {
   private parentContexts: ParentContext[] = [];
   private invites: Invite[] = [];
   private joinRequests: JoinRequest[] = [];
+  private notifications: Notification[] = [];
+  private notificationReads: Array<{ notificationId: string; userId: string; readAt: string }> = [];
 
   async getUserById(userId: string): Promise<User | undefined> {
     return this.users.find((user) => user.id === userId);
@@ -248,6 +251,73 @@ export class InMemoryIdentityStore implements IdentityStore {
     }
 
     return request;
+  }
+
+
+  async createNotification(input: {
+    sectionId: string;
+    sessionId?: string;
+    type: Notification['type'];
+    title: string;
+    message: string;
+    targetMode: Notification['targetMode'];
+    childIds: string[];
+    createdByUserId: string;
+    delivery: Notification['delivery'];
+  }): Promise<Notification> {
+    const item: Notification = {
+      id: randomUUID(),
+      sectionId: input.sectionId,
+      sessionId: input.sessionId,
+      type: input.type,
+      title: input.title,
+      message: input.message,
+      targetMode: input.targetMode,
+      childIds: [...input.childIds],
+      createdByUserId: input.createdByUserId,
+      createdAt: new Date().toISOString(),
+      delivery: {
+        attempted: input.delivery.attempted,
+        delivered: input.delivery.delivered,
+        failed: input.delivery.failed,
+      },
+    };
+    this.notifications.unshift(item);
+    return item;
+  }
+
+  async listNotifications(filters?: { sectionId?: string }): Promise<Notification[]> {
+    const sectionId = filters?.sectionId;
+    return this.notifications.filter((item) => (sectionId ? item.sectionId === sectionId : true));
+  }
+
+  async getNotificationById(notificationId: string): Promise<Notification | undefined> {
+    return this.notifications.find((item) => item.id === notificationId);
+  }
+
+  async markNotificationRead(userId: string, notificationId: string): Promise<void> {
+    const existing = this.notificationReads.find((row) => row.userId === userId && row.notificationId === notificationId);
+    if (existing) {
+      existing.readAt = new Date().toISOString();
+      return;
+    }
+
+    this.notificationReads.push({
+      notificationId,
+      userId,
+      readAt: new Date().toISOString(),
+    });
+  }
+
+  async listReadNotificationIds(userId: string, notificationIds: string[]): Promise<string[]> {
+    if (notificationIds.length === 0) {
+      return [];
+    }
+
+    const set = new Set(notificationIds);
+    return this.notificationReads
+      .filter((row) => row.userId === userId && set.has(row.notificationId))
+      .map((row) => row.notificationId);
   }
 
   async seedDemoData(): Promise<void> {
