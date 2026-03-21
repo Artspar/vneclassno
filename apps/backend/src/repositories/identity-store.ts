@@ -21,6 +21,7 @@ export interface IdentityStore {
   listSectionsByIds(sectionIds: string[]): Promise<Section[]>;
 
   listChildrenForParent(parentUserId: string): Promise<Child[]>;
+  listChildrenBySection(sectionId: string): Promise<Child[]>;
   createChild(input: Pick<Child, 'firstName' | 'lastName' | 'birthDate'>): Promise<Child>;
   linkParentToChild(parentUserId: string, childId: string): Promise<void>;
 

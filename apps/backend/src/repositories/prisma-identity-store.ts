@@ -147,6 +147,20 @@ export class PrismaIdentityStore implements IdentityStore {
     }));
   }
 
+  async listChildrenBySection(sectionId: string): Promise<Child[]> {
+    const rows = await this.prisma.childSection.findMany({
+      where: { sectionId },
+      include: { child: true },
+    });
+
+    return rows.map((row) => ({
+      id: row.child.id,
+      firstName: row.child.firstName,
+      lastName: row.child.lastName,
+      birthDate: row.child.birthDate?.toISOString(),
+    }));
+  }
+
   async createChild(input: Pick<Child, 'firstName' | 'lastName' | 'birthDate'>): Promise<Child> {
     const child = await this.prisma.child.create({
       data: {

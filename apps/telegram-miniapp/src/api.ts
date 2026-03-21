@@ -17,6 +17,8 @@ export type AuthResponse = {
 };
 
 export type MeContext = {
+  userId: string;
+  roles: string[];
   children: Array<{
     id: string;
     firstName: string;
@@ -28,6 +30,27 @@ export type MeContext = {
   }>;
   activeChildId?: string;
   activeSectionId?: string;
+};
+
+export type AttendanceBoard = {
+  sectionId: string;
+  canManage: boolean;
+  session: {
+    id: string;
+    title: string;
+    startsAt: string;
+    endsAt: string;
+    status: 'scheduled' | 'live' | 'completed';
+  };
+  items: Array<{
+    childId: string;
+    childName: string;
+    status: 'expected' | 'present' | 'late' | 'absent';
+    onLesson: boolean;
+    absenceId?: string;
+    absenceStatus?: 'pending' | 'approved' | 'rejected';
+    isExcused?: boolean;
+  }>;
 };
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000';
@@ -56,6 +79,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {
       throw new Error('Сервер долго отвечает. Повторите вход через 10-20 секунд.');
+    }
+    if (error instanceof TypeError) {
+      throw new Error('Нет соединения с сервером. Проверьте интернет и откройте мини-приложение снова.');
     }
     throw error;
   } finally {
@@ -102,6 +128,68 @@ export function acceptInvite(
       },
 ): Promise<{ status: string }> {
   return request<{ status: string }>(`/invites/${encodeURIComponent(token)}/accept`, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function getAttendanceBoard(accessToken: string, sectionId: string): Promise<AttendanceBoard> {
+  return request<AttendanceBoard>(`/attendance/board?sectionId=${encodeURIComponent(sectionId)}`, {
+    method: 'GET',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+    },
+  });
+}
+
+export function bulkUpdateAttendance(
+  accessToken: string,
+  payload: {
+    sessionId: string;
+    updates: Array<{
+      childId: string;
+      status: 'expected' | 'present' | 'late' | 'absent';
+    }>;
+  },
+): Promise<AttendanceBoard> {
+  return request<AttendanceBoard>('/attendance/bulk-update', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function requestAbsence(
+  accessToken: string,
+  payload: {
+    sessionId: string;
+    childId: string;
+    reason?: string;
+  },
+) {
+  return request<{ id: string; status: 'pending' | 'approved' | 'rejected' }>('/absence/request', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function decideAbsence(
+  accessToken: string,
+  absenceId: string,
+  payload: {
+    decision: 'approved' | 'rejected';
+    isExcused?: boolean;
+  },
+) {
+  return request<{ id: string; status: 'pending' | 'approved' | 'rejected' }>(`/absence/${absenceId}/decision`, {
     method: 'POST',
     headers: {
       authorization: `Bearer ${accessToken}`,

@@ -70,6 +70,11 @@ export class InMemoryIdentityStore implements IdentityStore {
     return this.children.filter((child) => childIds.includes(child.id));
   }
 
+  async listChildrenBySection(sectionId: string): Promise<Child[]> {
+    const childIds = this.childSections.filter((link) => link.sectionId === sectionId).map((link) => link.childId);
+    return this.children.filter((child) => childIds.includes(child.id));
+  }
+
   async createChild(input: Pick<Child, 'firstName' | 'lastName' | 'birthDate'>): Promise<Child> {
     const child: Child = {
       id: randomUUID(),
@@ -237,6 +242,7 @@ export class InMemoryIdentityStore implements IdentityStore {
     const coach = await this.createUser({
       firstName: 'Demo',
       lastName: 'Coach',
+      phone: '+79990000002',
       telegramId: '1001',
     });
     await this.addRoleAssignment({ userId: coach.id, role: 'coach', sectionId: 'section-a' });
@@ -244,6 +250,7 @@ export class InMemoryIdentityStore implements IdentityStore {
     const sectionAdmin = await this.createUser({
       firstName: 'Demo',
       lastName: 'SectionAdmin',
+      phone: '+79990000003',
       telegramId: '1002',
     });
     await this.addRoleAssignment({ userId: sectionAdmin.id, role: 'section_admin', sectionId: 'section-b' });

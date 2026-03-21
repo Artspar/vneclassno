@@ -1,5 +1,16 @@
 import { useEffect, useState } from 'react';
-import { acceptInvite, loginTelegram, meContext, resolveInvite, type MeContext } from './api';
+import {
+  acceptInvite,
+  bulkUpdateAttendance,
+  decideAbsence,
+  getAttendanceBoard,
+  loginTelegram,
+  meContext,
+  requestAbsence,
+  resolveInvite,
+  type AttendanceBoard,
+  type MeContext,
+} from './api';
 import { getStartTokenFromTelegram, getStartTokenFromUrl, getTelegramWebApp } from './telegram';
 
 type Tab = 'home' | 'schedule' | 'attendance' | 'payments' | 'profile';
@@ -13,6 +24,63 @@ const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'payments', label: 'Платежи' },
   { id: 'profile', label: 'Профиль' },
 ];
+
+function TabIcon({ tab }: { tab: Tab }) {
+  const shared = {
+    width: 20,
+    height: 20,
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 1.9,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+    'aria-hidden': true,
+  };
+
+  if (tab === 'home') {
+    return (
+      <svg {...shared}>
+        <path d="M3 10.5 12 3l9 7.5" />
+        <path d="M5.5 9.8V21h13V9.8" />
+      </svg>
+    );
+  }
+
+  if (tab === 'schedule') {
+    return (
+      <svg {...shared}>
+        <rect x="3.5" y="5" width="17" height="15.5" rx="2.5" />
+        <path d="M8 3.5v3M16 3.5v3M3.5 9.5h17" />
+      </svg>
+    );
+  }
+
+  if (tab === 'attendance') {
+    return (
+      <svg {...shared}>
+        <path d="M4 20.5h16" />
+        <path d="M7 17V10M12 17V6M17 17v-3" />
+      </svg>
+    );
+  }
+
+  if (tab === 'payments') {
+    return (
+      <svg {...shared}>
+        <rect x="3.5" y="6" width="17" height="12" rx="2.5" />
+        <path d="M3.5 10h17M7 14h3" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg {...shared}>
+      <circle cx="12" cy="8" r="3.4" />
+      <path d="M5 20c.6-3.2 3.1-5 7-5s6.4 1.8 7 5" />
+    </svg>
+  );
+}
 
 function isTransient(error: unknown): boolean {
   if (!(error instanceof Error)) {
@@ -55,6 +123,8 @@ export function App() {
   const [lastName, setLastName] = useState('');
   const [birthDate, setBirthDate] = useState('');
   const [inviteMode, setInviteMode] = useState<'child' | 'new'>('new');
+  const [attendanceBoard, setAttendanceBoard] = useState<AttendanceBoard | null>(null);
+  const [attendanceBusy, setAttendanceBusy] = useState(false);
 
   useEffect(() => {
     void bootstrap();
@@ -159,33 +229,121 @@ export function App() {
     }
   }
 
+  async function loadAttendanceBoard() {
+    if (!accessToken || !activeSectionId) {
+      return;
+    }
+
+    setAttendanceBusy(true);
+    setError('');
+    try {
+      const board = await getAttendanceBoard(accessToken, activeSectionId);
+      setAttendanceBoard(board);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Не удалось загрузить посещения');
+    } finally {
+      setAttendanceBusy(false);
+    }
+  }
+
+  async function setAttendanceStatus(childId: string, status: 'present' | 'late' | 'absent') {
+    if (!attendanceBoard) {
+      return;
+    }
+
+    setAttendanceBusy(true);
+    setError('');
+    try {
+      const next = await bulkUpdateAttendance(accessToken, {
+        sessionId: attendanceBoard.session.id,
+        updates: [{ childId, status }],
+      });
+      setAttendanceBoard(next);
+
+      if (status === 'absent') {
+        await requestAbsence(accessToken, {
+          sessionId: attendanceBoard.session.id,
+          childId,
+          reason: 'Отметка тренера',
+        });
+        const refreshed = await getAttendanceBoard(accessToken, activeSectionId);
+        setAttendanceBoard(refreshed);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Не удалось обновить посещение');
+    } finally {
+      setAttendanceBusy(false);
+    }
+  }
+
+  async function handleAbsenceDecision(absenceId: string, decision: 'approved' | 'rejected') {
+    setAttendanceBusy(true);
+    setError('');
+    try {
+      await decideAbsence(accessToken, absenceId, {
+        decision,
+        isExcused: decision === 'approved',
+      });
+      const next = await getAttendanceBoard(accessToken, activeSectionId);
+      setAttendanceBoard(next);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Не удалось принять решение по отсутствию');
+    } finally {
+      setAttendanceBusy(false);
+    }
+  }
+
   const activeChild = context?.children.find((child) => child.id === activeChildId) ?? context?.children[0];
   const activeSection = context?.sections.find((section) => section.id === activeSectionId) ?? context?.sections[0];
   const hasChildren = (context?.children.length ?? 0) > 0;
+  const isCoachView =
+    context?.roles.includes('coach') || context?.roles.includes('section_admin') || context?.roles.includes('super_admin') || false;
+
+  useEffect(() => {
+    if (tab !== 'attendance') {
+      return;
+    }
+
+    void loadAttendanceBoard();
+  }, [tab, accessToken, activeSectionId]);
 
   if (!accessToken || !context) {
     return (
-      <div className="page">
-        <div className="card stack">
-          <span className="badge">Telegram Mini App</span>
-          <h1>Вход через Telegram</h1>
-          <p className="muted">Открывайте мини-приложение из бота. Вход выполняется автоматически по Telegram ID.</p>
-          <p>{busy ? 'Подключаемся...' : 'Ожидаем инициализацию...'}</p>
-          {error && <p className="error-inline">{error}</p>}
-        </div>
+      <div className="page modern-shell">
+        <section className="hero-head">
+          <div className="hero-top-row">
+            <span className="hero-chip">Telegram</span>
+          </div>
+          <div className="hero-logo">V</div>
+        </section>
+        <section className="content-sheet">
+          <div className="auth-panel stack">
+            <h1>Вход через Telegram</h1>
+            <p className="muted">Открывайте мини-приложение из бота. Вход выполняется автоматически по Telegram ID.</p>
+            <p>{busy ? 'Подключаемся...' : 'Ожидаем инициализацию...'}</p>
+            {error && <p className="error-inline">{error}</p>}
+          </div>
+        </section>
       </div>
     );
   }
 
   return (
-    <div className="page app">
-      <section className="card stack">
-        <div className="top-row">
-          <span className="badge">Родитель</span>
-          <span className="status">Online</span>
+    <div className="page modern-shell">
+      <section className="hero-head">
+        <div className="hero-top-row">
+          <span className="hero-chip">Родитель</span>
+          <span className="hero-chip">Online</span>
         </div>
+        <div className="hero-logo">V</div>
+        <div className="hero-title-wrap">
+          <h2>{activeChild ? `${activeChild.firstName} ${activeChild.lastName}` : 'Ребенок не выбран'}</h2>
+          <p>{activeSection?.name ?? 'Секция не выбрана'}</p>
+        </div>
+      </section>
 
-        <div className="context-grid">
+      <section className="content-sheet">
+        <div className="context-grid compact-grid">
           <div className="stack">
             <p className="muted">Ребенок</p>
             <select value={activeChildId} onChange={(e) => setActiveChildId(e.target.value)}>
@@ -207,12 +365,10 @@ export function App() {
             </select>
           </div>
         </div>
-      </section>
 
-      <section className="card stack">
+        <section className="tab-screen stack">
         {tab === 'home' && (
           <>
-            <h2>{activeChild ? `${activeChild.firstName} ${activeChild.lastName}` : 'Ребенок не выбран'}</h2>
             <p className="muted">Секция: {activeSection?.name ?? 'не выбрана'}</p>
             <div className="metric-grid">
               <article className="metric-item">
@@ -274,8 +430,71 @@ export function App() {
         {tab === 'attendance' && (
           <>
             <h2>Посещения</h2>
-            <div className="list-card">12 мар · присутствовал</div>
-            <div className="list-card">14 мар · отсутствовал</div>
+            {!attendanceBoard && <div className="list-card">{attendanceBusy ? 'Загружаем...' : 'Нет данных по посещениям'}</div>}
+            {attendanceBoard && (
+              <>
+                <div className="list-card">
+                  {attendanceBoard.session.title} · {new Date(attendanceBoard.session.startsAt).toLocaleString('ru-RU')} ·{' '}
+                  {attendanceBoard.session.status === 'live' ? 'Идет сейчас' : 'Запланировано'}
+                </div>
+
+                {attendanceBoard.items.map((item) => (
+                  <div key={item.childId} className="list-card stack">
+                    <div className="headline-row">
+                      <strong>{item.childName}</strong>
+                      <span className={`status-pill ${item.onLesson ? 'live' : ''}`}>
+                        {item.onLesson
+                          ? 'На занятии'
+                          : item.status === 'present'
+                            ? 'Присутствует'
+                            : item.status === 'late'
+                              ? 'Опоздал'
+                              : item.status === 'absent'
+                                ? 'Отсутствует'
+                                : 'Ожидается'}
+                      </span>
+                    </div>
+
+                    {isCoachView && attendanceBoard.canManage && (
+                      <div className="inline-actions">
+                        <button disabled={attendanceBusy} onClick={() => void setAttendanceStatus(item.childId, 'present')}>
+                          Присутствует
+                        </button>
+                        <button disabled={attendanceBusy} onClick={() => void setAttendanceStatus(item.childId, 'late')}>
+                          Опоздал
+                        </button>
+                        <button disabled={attendanceBusy} onClick={() => void setAttendanceStatus(item.childId, 'absent')}>
+                          Отсутствует
+                        </button>
+                      </div>
+                    )}
+
+                    {isCoachView && attendanceBoard.canManage && item.absenceId && item.absenceStatus === 'pending' && (
+                      <div className="inline-actions">
+                        <button
+                          disabled={attendanceBusy}
+                          onClick={() => void handleAbsenceDecision(item.absenceId as string, 'approved')}
+                        >
+                          Легитимно
+                        </button>
+                        <button
+                          disabled={attendanceBusy}
+                          onClick={() => void handleAbsenceDecision(item.absenceId as string, 'rejected')}
+                        >
+                          Нелегитимно
+                        </button>
+                      </div>
+                    )}
+
+                    {item.absenceStatus === 'approved' && (
+                      <p className="muted">
+                        Отсутствие подтверждено: {item.isExcused ? 'абонемент не списывается/продлевается' : 'стандартное списание'}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </>
+            )}
           </>
         )}
 
@@ -296,9 +515,10 @@ export function App() {
 
         {statusMessage && <p className="success">{statusMessage}</p>}
         {error && <p className="error-inline">{error}</p>}
+        </section>
       </section>
 
-      <nav className="tabbar card" aria-label="Навигация">
+      <nav className="tabbar" aria-label="Навигация">
         {TABS.map((item) => (
           <button
             key={item.id}
@@ -306,7 +526,8 @@ export function App() {
             className={`tabbar-item ${tab === item.id ? 'active' : ''}`}
             onClick={() => setTab(item.id)}
           >
-            {item.label}
+            <TabIcon tab={item.id} />
+            <span>{item.label}</span>
           </button>
         ))}
       </nav>

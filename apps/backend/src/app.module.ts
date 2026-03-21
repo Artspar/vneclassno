@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
 import { AuthService } from './auth/auth-service.js';
+import { AttendanceService } from './attendance/attendance-service.js';
 import { TokenService } from './auth/token-service.js';
 import { ParentContextService } from './context/parent-context-service.js';
+import { AttendanceController } from './http/attendance.controller.js';
 import { AuthController } from './http/auth.controller.js';
 import { ContextController } from './http/context.controller.js';
 import { HealthController } from './http/health.controller.js';
@@ -17,7 +19,7 @@ import { TelegramBotService } from './telegram/telegram-bot.service.js';
 import { IDENTITY_STORE } from './tokens.js';
 
 @Module({
-  controllers: [AuthController, ContextController, HealthController, InvitesController, TelegramController],
+  controllers: [AuthController, AttendanceController, ContextController, HealthController, InvitesController, TelegramController],
   providers: [
     PrismaService,
     PrismaIdentityStore,
@@ -63,6 +65,11 @@ import { IDENTITY_STORE } from './tokens.js';
       inject: [IDENTITY_STORE, RbacService, TelegramBotService],
       useFactory: (store: IdentityStore, rbac: RbacService, telegramBotService: TelegramBotService) =>
         new InviteService(store, rbac, telegramBotService),
+    },
+    {
+      provide: AttendanceService,
+      inject: [IDENTITY_STORE],
+      useFactory: (store: IdentityStore) => new AttendanceService(store),
     },
   ],
 })
