@@ -806,6 +806,19 @@ export function App() {
         </div>
       </section>
 
+      <section className="hero-card fade-in-2">
+        <p className="hero-card-kicker">Быстрый статус</p>
+        <div className="hero-card-row">
+          <strong>{isCoachView ? 'Группа под контролем' : 'Ребенок в фокусе'}</strong>
+          <span>{isCoachView ? 'Online' : 'Активно'}</span>
+        </div>
+        <p className="hero-card-sub">
+          {isCoachView
+            ? `Секция: ${activeSection?.name ?? 'не выбрана'}`
+            : `Секция: ${activeSection?.name ?? 'не выбрана'} · Статус: на занятии`}
+        </p>
+      </section>
+
       <section className="content-sheet">
         <div className={`context-grid compact-grid ${isCoachView ? 'coach-grid' : ''}`}>
           {!isCoachView && (
