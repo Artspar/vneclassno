@@ -42,24 +42,39 @@ export type CreatedInvite = {
 };
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3000';
+const REQUEST_TIMEOUT_MS = 15000;
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...init,
-    headers: {
-      'content-type': 'application/json',
-      ...(init?.headers ?? {}),
-    },
-    cache: 'no-store',
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
-  const data = (await response.json().catch(() => ({}))) as { error?: string } & T;
+  try {
+    const response = await fetch(`${API_BASE}${path}`, {
+      ...init,
+      headers: {
+        'content-type': 'application/json',
+        ...(init?.headers ?? {}),
+      },
+      cache: 'no-store',
+      signal: controller.signal,
+    });
 
-  if (!response.ok) {
-    throw new Error(data.error ?? `Request failed: ${response.status}`);
+    const data = (await response.json().catch(() => ({}))) as { error?: string } & T;
+
+    if (!response.ok) {
+      throw new Error(data.error ?? `Request failed: ${response.status}`);
+    }
+
+    return data as T;
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new Error('Сервер долго отвечает (возможно просыпается). Нажмите Войти еще раз через 10-20 секунд.');
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  return data as T;
 }
 
 export function resolveInvite(token: string): Promise<InviteResponse> {
