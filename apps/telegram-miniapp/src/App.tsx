@@ -3,6 +3,7 @@ import {
   acceptInvite,
   bulkUpdateAttendance,
   confirmParticipation,
+  createInvite,
   createNotification,
   decideAbsence,
   getAttendanceBoard,
@@ -180,6 +181,9 @@ export function App() {
   const [notificationMessage, setNotificationMessage] = useState('');
   const [notificationTargetMode, setNotificationTargetMode] = useState<'all' | 'selected'>('all');
   const [notificationChildIds, setNotificationChildIds] = useState<string[]>([]);
+  const [shareBusy, setShareBusy] = useState(false);
+  const [shareLinkUrl, setShareLinkUrl] = useState('');
+  const [shareChildId, setShareChildId] = useState('');
   const [linkPhone, setLinkPhone] = useState('+79990000001');
   const [linkOtp, setLinkOtp] = useState('');
   const [linkChannel, setLinkChannel] = useState<OtpChannel>('sms');
@@ -518,6 +522,42 @@ export function App() {
     }
   }
 
+  async function handleCreateParentShareLink() {
+    if (!accessToken || !activeSectionId) {
+      return;
+    }
+
+    let childIdForLink = isCoachView ? shareChildId : activeChildId;
+    if (isCoachView && !childIdForLink) {
+      const board = attendanceBoard ?? (await getAttendanceBoard(accessToken, activeSectionId));
+      setAttendanceBoard(board);
+      childIdForLink = board.items[0]?.childId ?? '';
+      if (childIdForLink) {
+        setShareChildId(childIdForLink);
+      }
+    }
+
+    if (!childIdForLink) {
+      setError('Выберите ребенка для ссылки второго родителя');
+      return;
+    }
+
+    setShareBusy(true);
+    setError('');
+    try {
+      const invite = await createInvite(accessToken, activeSectionId, {
+        allowParentReshare: true,
+        childId: childIdForLink,
+      });
+      setShareLinkUrl(invite.pwaInviteUrl);
+      setStatusMessage('Ссылка второго родителя готова. Можно переслать в любой мессенджер.');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Не удалось создать ссылку шэринга');
+    } finally {
+      setShareBusy(false);
+    }
+  }
+
   async function handlePhoneLinkRequestOtp() {
     setLinkBusy(true);
     setError('');
@@ -555,6 +595,10 @@ export function App() {
   }
 
   useEffect(() => {
+    if (!shareChildId && activeChildId) {
+      setShareChildId(activeChildId);
+    }
+
     if (tab === 'attendance' || tab === 'schedule') {
       void loadAttendanceBoard();
     }
@@ -898,6 +942,27 @@ export function App() {
                 ))}
             </div>
             <p className="muted">Вход выполнен через Telegram.</p>
+            <div className="stack invite-box">
+              <p className="muted">Ссылка для второго родителя</p>
+              {isCoachView && attendanceBoard && attendanceBoard.items.length > 0 && (
+                <select value={shareChildId} onChange={(e) => setShareChildId(e.target.value)}>
+                  <option value="">Выберите ребенка</option>
+                  {attendanceBoard.items.map((item) => (
+                    <option key={item.childId} value={item.childId}>
+                      {item.childName}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <button type="button" disabled={shareBusy} onClick={() => void handleCreateParentShareLink()}>
+                {shareBusy ? 'Готовим ссылку...' : 'Создать ссылку для второго родителя'}
+              </button>
+              {shareLinkUrl && (
+                <a className="muted" href={shareLinkUrl} target="_blank" rel="noreferrer">
+                  Открыть/скопировать ссылку
+                </a>
+              )}
+            </div>
             <div className="stack invite-box">
               <p className="muted">{context.hasLinkedPhone ? 'Перепривязать телефон PWA' : 'Привязать телефон PWA'}</p>
               <input value={linkPhone} onChange={(e) => setLinkPhone(e.target.value)} placeholder="+79990000001" />

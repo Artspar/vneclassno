@@ -121,6 +121,8 @@ export type CreatedInvite = {
   pwaInviteUrl: string;
   telegramStartAppUrl?: string;
   telegramMiniAppUrl: string;
+  childId?: string;
+  mode?: 'add_parent' | 'join_section';
 };
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3000';
@@ -187,13 +189,21 @@ export function loginTelegram(initData: string): Promise<AuthResponse> {
   });
 }
 
-export function createInvite(accessToken: string, sectionId: string): Promise<CreatedInvite> {
+export function createInvite(
+  accessToken: string,
+  sectionId: string,
+  payload?: { allowParentReshare?: boolean; childId?: string },
+): Promise<CreatedInvite> {
   return request<CreatedInvite>('/invites', {
     method: 'POST',
     headers: {
       authorization: `Bearer ${accessToken}`,
     },
-    body: JSON.stringify({ sectionId }),
+    body: JSON.stringify({
+      sectionId,
+      allowParentReshare: payload?.allowParentReshare,
+      childId: payload?.childId,
+    }),
   });
 }
 

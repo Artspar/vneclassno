@@ -5,20 +5,20 @@ import { acceptInvite, getMeContext, loginPwa, requestPwaOtp, resolveInvite, typ
 
 const ACCESS_TOKEN_KEY = 'vneclassno_pwa_access_token';
 
-type Step = 'loading' | 'auth' | 'select-child' | 'create-child' | 'done' | 'error';
+type Step = 'loading' | 'auth' | 'link-child' | 'select-child' | 'create-child' | 'done' | 'error';
 
-export default function InviteFlow({ token }: { token: string }) {
+export default function InviteFlow({ token, linkedChildId }: { token: string; linkedChildId?: string }) {
   const [step, setStep] = useState<Step>('loading');
   const [error, setError] = useState<string>('');
   const [message, setMessage] = useState<string>('');
   const [invite, setInvite] = useState<InviteResponse | null>(null);
   const [accessToken, setAccessToken] = useState<string>('');
   const [phone, setPhone] = useState('+79990000001');
-  const [otpCode, setOtpCode] = useState('');
+  const [otpCode, setOtpCode] = useState('1234');
   const [otpChannel, setOtpChannel] = useState<OtpChannel>('sms');
   const [otpRequestId, setOtpRequestId] = useState('');
   const [children, setChildren] = useState<Array<{ id: string; firstName: string; lastName: string }>>([]);
-  const [selectedChildId, setSelectedChildId] = useState('');
+  const [selectedChildId, setSelectedChildId] = useState(linkedChildId ?? '');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [birthDate, setBirthDate] = useState('');
@@ -27,13 +27,15 @@ export default function InviteFlow({ token }: { token: string }) {
   useEffect(() => {
     const tg = (window as { Telegram?: { WebApp?: unknown } }).Telegram?.WebApp;
     const botName = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME;
-    if (tg && botName) {
+
+    // Для add_parent ссылки остаемся в PWA, чтобы не потерять childId параметр.
+    if (tg && botName && !linkedChildId) {
       window.location.href = `https://t.me/${botName}?startapp=invite_${token}`;
       return;
     }
 
     void bootstrap();
-  }, [token]);
+  }, [token, linkedChildId]);
 
   async function bootstrap() {
     setBusy(true);
@@ -62,6 +64,13 @@ export default function InviteFlow({ token }: { token: string }) {
     try {
       const context = await getMeContext(tokenValue);
       setChildren(context.children);
+
+      if (linkedChildId) {
+        setSelectedChildId(linkedChildId);
+        setStep('link-child');
+        return;
+      }
+
       if (context.children.length > 0) {
         setSelectedChildId(context.children[0].id);
         setStep('select-child');
@@ -156,7 +165,7 @@ export default function InviteFlow({ token }: { token: string }) {
     <div className="stack">
       <div className="card stack">
         <span className="badge">Invite onboarding</span>
-        <h1>Добавление ребенка в секцию</h1>
+        <h1>{linkedChildId ? 'Добавление второго родителя' : 'Добавление ребенка в секцию'}</h1>
         <p className="caption">Токен: {token}</p>
         {invite && <p className="caption">Секция: {invite.invite.sectionId}</p>}
       </div>
@@ -183,6 +192,16 @@ export default function InviteFlow({ token }: { token: string }) {
           <input value={otpCode} onChange={(e) => setOtpCode(e.target.value)} placeholder="Код" />
           <button disabled={busy} onClick={() => void handleLogin()}>
             {busy ? 'Входим...' : 'Войти'}
+          </button>
+        </div>
+      )}
+
+      {step === 'link-child' && (
+        <div className="card stack">
+          <h2>Подтверждение добавления</h2>
+          <p className="caption">Ссылка предназначена для добавления второго родителя к ребенку.</p>
+          <button disabled={busy} onClick={() => void handleAcceptExistingChild()}>
+            {busy ? 'Отправляем...' : 'Добавиться как второй родитель'}
           </button>
         </div>
       )}

@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import {
   bulkUpdateAttendance,
   confirmParticipation,
+  createInvite,
   createNotification,
   decideAbsence,
   getAttendanceBoard,
@@ -152,6 +153,9 @@ export default function PwaShell() {
   const [notificationMessage, setNotificationMessage] = useState('');
   const [notificationTargetMode, setNotificationTargetMode] = useState<'all' | 'selected'>('all');
   const [notificationChildIds, setNotificationChildIds] = useState<string[]>([]);
+  const [shareBusy, setShareBusy] = useState(false);
+  const [shareLinkUrl, setShareLinkUrl] = useState('');
+  const [shareChildId, setShareChildId] = useState('');
   const [linkBusy, setLinkBusy] = useState(false);
   const [telegramLinkUrl, setTelegramLinkUrl] = useState('');
 
@@ -463,6 +467,49 @@ export default function PwaShell() {
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Не удалось сохранить активного ребенка');
+    }
+  }
+
+  async function handleCreateParentShareLink() {
+    if (!accessToken || !activeSectionId) {
+      return;
+    }
+
+    let childIdForLink = isCoachView ? shareChildId : activeChildId;
+    if (isCoachView && !childIdForLink) {
+      const board = attendanceBoard ?? (await getAttendanceBoard(accessToken, activeSectionId));
+      setAttendanceBoard(board);
+      childIdForLink = board.items[0]?.childId ?? '';
+      if (childIdForLink) {
+        setShareChildId(childIdForLink);
+      }
+    }
+
+    if (!childIdForLink) {
+      setError('Выберите ребенка для ссылки второго родителя');
+      return;
+    }
+
+    setShareBusy(true);
+    setError('');
+    try {
+      const invite = await createInvite(accessToken, activeSectionId, {
+        allowParentReshare: true,
+        childId: childIdForLink,
+      });
+      setShareLinkUrl(invite.pwaInviteUrl);
+
+      if (navigator.share) {
+        await navigator.share({
+          title: 'Ссылка для второго родителя',
+          text: 'Откройте ссылку, чтобы добавить второго родителя к ребенку в секции',
+          url: invite.pwaInviteUrl,
+        });
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Не удалось создать ссылку шэринга');
+    } finally {
+      setShareBusy(false);
     }
   }
 
@@ -816,6 +863,28 @@ export default function PwaShell() {
                 ))}
             </div>
             <p className="caption">Телефон: {phone}</p>
+            <div className="list-card stack">
+              <p className="caption">Шэринг ссылки</p>
+              <p className="caption">Тренер и первый родитель могут отправить ссылку для добавления второго родителя.</p>
+              {isCoachView && attendanceBoard && attendanceBoard.items.length > 0 && (
+                <select value={shareChildId} onChange={(e) => setShareChildId(e.target.value)}>
+                  <option value="">Выберите ребенка</option>
+                  {attendanceBoard.items.map((item) => (
+                    <option key={item.childId} value={item.childId}>
+                      {item.childName}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <button type="button" disabled={shareBusy} onClick={() => void handleCreateParentShareLink()}>
+                {shareBusy ? 'Готовим ссылку...' : 'Создать ссылку для второго родителя'}
+              </button>
+              {shareLinkUrl && (
+                <a className="link-block" href={shareLinkUrl} target="_blank" rel="noreferrer">
+                  Открыть/скопировать ссылку
+                </a>
+              )}
+            </div>
             <button type="button" disabled={linkBusy} onClick={() => void handleTelegramLinkRequest()}>
               {linkBusy ? 'Готовим ссылку...' : context.hasLinkedTelegram ? 'Перепривязать Telegram' : 'Привязать Telegram'}
             </button>

@@ -14,7 +14,7 @@ export class InvitesController {
   @Post('invites')
   async createInvite(
     @Req() request: Request,
-    @Body() body: { sectionId?: string; allowParentReshare?: boolean; expiresAt?: string },
+    @Body() body: { sectionId?: string; allowParentReshare?: boolean; expiresAt?: string; childId?: string },
   ) {
     const userId = requireUserId(request, this.tokenService);
 
@@ -23,6 +23,7 @@ export class InvitesController {
       sectionId: String(body.sectionId ?? ''),
       allowParentReshare: body.allowParentReshare,
       expiresAt: body.expiresAt,
+      childId: body.childId,
     });
   }
 

@@ -89,6 +89,16 @@ export type PaymentOptionsResponse = {
   };
 };
 
+export type CreatedInvite = {
+  token: string;
+  sectionId: string;
+  pwaInviteUrl: string;
+  telegramStartAppUrl?: string;
+  telegramMiniAppUrl: string;
+  childId?: string;
+  mode?: 'add_parent' | 'join_section';
+};
+
 export type AttendanceBoard = {
   sectionId: string;
   canManage: boolean;
@@ -151,6 +161,23 @@ export function loginTelegram(initData: string): Promise<AuthResponse> {
   return request<AuthResponse>('/auth/telegram', {
     method: 'POST',
     body: JSON.stringify({ initData }),
+  });
+}
+
+
+export function createInvite(
+  accessToken: string,
+  sectionId: string,
+  payload?: { allowParentReshare?: boolean; childId?: string },
+): Promise<CreatedInvite> {
+  return request<CreatedInvite>('/invites', {
+    method: 'POST',
+    headers: { authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify({
+      sectionId,
+      allowParentReshare: payload?.allowParentReshare,
+      childId: payload?.childId,
+    }),
   });
 }
 
