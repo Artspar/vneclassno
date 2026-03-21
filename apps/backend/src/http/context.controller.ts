@@ -64,6 +64,8 @@ export class ContextController {
     return {
       userId,
       roles,
+      hasLinkedPhone: Boolean(user.phone),
+      hasLinkedTelegram: Boolean(user.telegramId),
       children,
       sections,
       activeChildId: selection.activeChildId ?? context?.activeChildId,

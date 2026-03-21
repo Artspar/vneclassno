@@ -642,6 +642,11 @@ export function App() {
           <>
             <h2>Профиль</h2>
             <p className="muted">Активная роль: {ROLE_LABELS[activeRole]}</p>
+            <div className="list-card stack">
+              <p className="muted">Статус привязок</p>
+              <p>{context.hasLinkedTelegram ? 'Telegram: привязан' : 'Telegram: не привязан'}</p>
+              <p>{context.hasLinkedPhone ? 'Телефон: привязан' : 'Телефон: не привязан'}</p>
+            </div>
             <div className="quick-roles">
               {context.roles
                 .map((value) => toUserRole(value))
@@ -660,7 +665,7 @@ export function App() {
             </div>
             <p className="muted">Вход выполнен через Telegram.</p>
             <div className="stack invite-box">
-              <p className="muted">Привязать телефон PWA</p>
+              <p className="muted">{context.hasLinkedPhone ? 'Перепривязать телефон PWA' : 'Привязать телефон PWA'}</p>
               <input value={linkPhone} onChange={(e) => setLinkPhone(e.target.value)} placeholder="+79990000001" />
               <input value={linkOtp} onChange={(e) => setLinkOtp(e.target.value)} placeholder="Код (1234)" />
               <button type="button" disabled={linkBusy} onClick={() => void handlePhoneLinkConfirm()}>

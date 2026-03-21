@@ -556,6 +556,11 @@ export default function PwaShell() {
           <>
             <h2>Профиль</h2>
             <p className="caption">Активная роль: {ROLE_LABELS[activeRole]}</p>
+            <div className="list-card stack">
+              <p className="caption">Статус привязок</p>
+              <p>{context.hasLinkedTelegram ? 'Telegram: привязан' : 'Telegram: не привязан'}</p>
+              <p>{context.hasLinkedPhone ? 'Телефон: привязан' : 'Телефон: не привязан'}</p>
+            </div>
             <div className="quick-roles">
               {context.roles
                 .map((value) => toUserRole(value))
@@ -574,7 +579,7 @@ export default function PwaShell() {
             </div>
             <p className="caption">Телефон: {phone}</p>
             <button type="button" disabled={linkBusy} onClick={() => void handleTelegramLinkRequest()}>
-              {linkBusy ? 'Готовим ссылку...' : 'Привязать Telegram'}
+              {linkBusy ? 'Готовим ссылку...' : context.hasLinkedTelegram ? 'Перепривязать Telegram' : 'Привязать Telegram'}
             </button>
             {telegramLinkUrl && (
               <a className="link-block" href={telegramLinkUrl} target="_blank" rel="noreferrer">

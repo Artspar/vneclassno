@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Manrope, Space_Grotesk } from 'next/font/google';
 import './globals.css';
 
@@ -17,6 +17,14 @@ const spaceGrotesk = Space_Grotesk({
 export const metadata: Metadata = {
   title: 'VneClassno PWA',
   description: 'Invite onboarding for sections',
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

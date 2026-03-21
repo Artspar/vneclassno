@@ -19,6 +19,8 @@ export type AuthResponse = {
 export type MeContext = {
   userId: string;
   roles: string[];
+  hasLinkedPhone: boolean;
+  hasLinkedTelegram: boolean;
   children: Array<{
     id: string;
     firstName: string;
