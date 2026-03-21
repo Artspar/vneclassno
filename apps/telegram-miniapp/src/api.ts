@@ -65,6 +65,7 @@ export type NotificationFeedResponse = {
     matchedChildIds?: string[];
     createdAt: string;
     channels: Array<'telegram' | 'pwa'>;
+    delivery?: { attempted: number; delivered: number; failed: number };
   }>;
 };
 

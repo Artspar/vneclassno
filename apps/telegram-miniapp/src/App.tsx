@@ -56,6 +56,19 @@ function toUserRole(value: string): UserRole | null {
   return null;
 }
 
+
+function getDeliveryTick(delivery?: { attempted: number; delivered: number; failed: number }): string {
+  if (!delivery || delivery.attempted === 0) {
+    return '✓';
+  }
+
+  if (delivery.delivered >= delivery.attempted) {
+    return '✓✓';
+  }
+
+  return '✓';
+}
+
 function TabIcon({ tab }: { tab: Tab }) {
   const shared = {
     width: 20,
@@ -530,6 +543,8 @@ export function App() {
     setError('');
     try {
       await confirmPhoneLink(accessToken, linkPhone, linkOtp, linkOtpRequestId || undefined);
+      const refreshed = await meContext(accessToken);
+      setContext(refreshed);
       setStatusMessage('Телефон успешно привязан к текущему Telegram аккаунту.');
       setLinkStatus('');
     } catch (e) {
@@ -759,7 +774,7 @@ export function App() {
                   <span className="status-pill">{item.type}</span>
                 </div>
                 <p>{item.message}</p>
-                <p className="muted">Каналы: {item.channels.join(', ')} · {new Date(item.createdAt).toLocaleString('ru-RU')}</p>
+                <p className="muted">Каналы: {item.channels.join(', ')} · {new Date(item.createdAt).toLocaleString('ru-RU')} · {getDeliveryTick(item.delivery)}</p>
               </div>
             ))}
           </>
@@ -896,7 +911,7 @@ export function App() {
               </button>
               <input value={linkOtp} onChange={(e) => setLinkOtp(e.target.value)} placeholder="Код" />
               <button type="button" disabled={linkBusy} onClick={() => void handlePhoneLinkConfirm()}>
-                {linkBusy ? 'Привязываем...' : 'Привязать телефон'}
+                {linkBusy ? 'Привязываем...' : context.hasLinkedPhone ? 'Перепривязать телефон' : 'Привязать телефон'}
               </button>
               {linkStatus && <p className="muted">{linkStatus}</p>}
             </div>

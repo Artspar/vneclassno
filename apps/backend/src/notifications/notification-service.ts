@@ -8,6 +8,12 @@ import { TelegramBotService } from '../telegram/telegram-bot.service.js';
 type NotificationType = 'training' | 'game' | 'event';
 type TargetMode = 'all' | 'selected';
 
+interface NotificationDelivery {
+  attempted: number;
+  delivered: number;
+  failed: number;
+}
+
 interface NotificationItem {
   id: string;
   sectionId: string;
@@ -18,6 +24,7 @@ interface NotificationItem {
   childIds: string[];
   createdByUserId: string;
   createdAt: string;
+  delivery: NotificationDelivery;
 }
 
 interface AccessContext {
@@ -87,6 +94,26 @@ export class NotificationService {
       childIds = requested;
     }
 
+    const delivery = await this.deliverToTelegram(
+      {
+        id: randomUUID(),
+        sectionId,
+        type,
+        title,
+        message,
+        targetMode,
+        childIds,
+        createdByUserId: userId,
+        createdAt: new Date().toISOString(),
+        delivery: {
+          attempted: 0,
+          delivered: 0,
+          failed: 0,
+        },
+      },
+      roster,
+    );
+
     const item: NotificationItem = {
       id: randomUUID(),
       sectionId,
@@ -97,17 +124,15 @@ export class NotificationService {
       childIds,
       createdByUserId: userId,
       createdAt: new Date().toISOString(),
+      delivery,
     };
 
     this.notifications.unshift(item);
-
-    const delivery = await this.deliverToTelegram(item, roster);
 
     return {
       ...item,
       recipientsCount: childIds.length,
       channels: ['telegram', 'pwa'],
-      delivery,
     };
   }
 
@@ -159,7 +184,7 @@ export class NotificationService {
   private async deliverToTelegram(
     item: NotificationItem,
     roster: Array<{ id: string; firstName: string; lastName: string }>,
-  ): Promise<{ attempted: number; delivered: number; failed: number }> {
+  ): Promise<NotificationDelivery> {
     const section = await this.identityStore.getSectionById(item.sectionId);
     const typeLabel = item.type === 'training' ? 'Тренировка' : item.type === 'game' ? 'Игра' : 'Мероприятие';
 

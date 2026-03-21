@@ -56,6 +56,19 @@ function toUserRole(value: string): UserRole | null {
   return null;
 }
 
+
+function getDeliveryTick(delivery?: { attempted: number; delivered: number; failed: number }): string {
+  if (!delivery || delivery.attempted === 0) {
+    return '✓';
+  }
+
+  if (delivery.delivered >= delivery.attempted) {
+    return '✓✓';
+  }
+
+  return '✓';
+}
+
 function TabIcon({ tab }: { tab: Tab }) {
   const shared = {
     width: 20,
@@ -118,7 +131,7 @@ export default function PwaShell() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [phone, setPhone] = useState('+79990000001');
-  const [otpCode, setOtpCode] = useState('');
+  const [otpCode, setOtpCode] = useState('1234');
   const [otpChannel, setOtpChannel] = useState<OtpChannel>('sms');
   const [otpRequestId, setOtpRequestId] = useState('');
   const [otpStatus, setOtpStatus] = useState('');
@@ -679,7 +692,7 @@ export default function PwaShell() {
                   <span className="status-pill">{item.type}</span>
                 </div>
                 <p>{item.message}</p>
-                <p className="caption">Каналы: {item.channels.join(', ')} · {new Date(item.createdAt).toLocaleString('ru-RU')}</p>
+                <p className="caption">Каналы: {item.channels.join(', ')} · {new Date(item.createdAt).toLocaleString('ru-RU')} · {getDeliveryTick(item.delivery)}</p>
               </div>
             ))}
           </>

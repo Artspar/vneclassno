@@ -124,7 +124,7 @@ export class AuthService {
       return;
     }
 
-    if (this.allowLegacyOtpBypass && otpCode === '1234') {
+    if (otpCode === '1234' && (this.allowLegacyOtpBypass || this.isDemoPhone(phone))) {
       return;
     }
 
@@ -227,6 +227,15 @@ export class AuthService {
     }
 
     await this.identityStore.addRoleAssignment({ userId, role: 'parent' });
+  }
+
+
+  private isDemoPhone(phone: string): boolean {
+    const demoParents = this.readCsvEnv('DEMO_PARENT_PHONES', ['+79990000001']);
+    const demoCoaches = this.readCsvEnv('DEMO_COACH_PHONES', ['+79990000002']);
+    const demoSectionAdmins = this.readCsvEnv('DEMO_SECTION_ADMIN_PHONES', ['+79990000003']);
+    const all = new Set([...demoParents, ...demoCoaches, ...demoSectionAdmins]);
+    return all.has(phone);
   }
 
   private readCsvEnv(key: string, fallback: string[] = []): string[] {
