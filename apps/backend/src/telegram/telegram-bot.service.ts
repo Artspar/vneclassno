@@ -20,7 +20,10 @@ export class TelegramBotService {
 
   getMiniAppDirectUrl(token: string): string {
     const base = this.miniAppUrl.replace(/\/$/, '');
-    return `${base}/?token=${encodeURIComponent(token)}`;
+    const url = new URL(base);
+    url.searchParams.set('token', token);
+    url.searchParams.set('v', '2');
+    return url.toString();
   }
 
   async handleStart(chatId: number, payload?: string): Promise<void> {
