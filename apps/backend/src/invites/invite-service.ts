@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import type { IdentityStore } from '../repositories/identity-store.js';
 import { RbacService } from '../rbac/rbac-service.js';
@@ -33,14 +34,14 @@ export class InviteService {
 
     const section = await this.store.getSectionById(input.sectionId);
     if (!section) {
-      throw new Error('Section not found');
+      throw new BadRequestException('Section not found');
     }
 
     const actorRoles = (await this.store.listRoleAssignments(input.actorUserId)).map((item) => item.role);
     const actorIsParentOnly = actorRoles.length > 0 && actorRoles.every((role) => role === 'parent');
 
     if (actorIsParentOnly && !section.allowParentReshareInvites) {
-      throw new Error('Parent reshare invites are disabled for this section');
+      throw new BadRequestException('Parent reshare invites are disabled for this section');
     }
 
     const invite = await this.store.createInvite({
@@ -62,11 +63,11 @@ export class InviteService {
   async resolveInvite(token: string) {
     const invite = await this.store.getInviteByToken(token);
     if (!invite) {
-      throw new Error('Invite not found');
+      throw new BadRequestException('Invite not found');
     }
 
     if (invite.status !== 'active') {
-      throw new Error(`Invite is ${invite.status}`);
+      throw new BadRequestException(`Invite is ${invite.status}`);
     }
 
     return {
@@ -79,7 +80,7 @@ export class InviteService {
   async acceptInvite(input: AcceptInviteInput) {
     const invite = await this.store.getInviteByToken(input.token);
     if (!invite || invite.status !== 'active') {
-      throw new Error('Invite is not active');
+      throw new BadRequestException('Invite is not active');
     }
 
     let resolvedChildId = input.childId;
@@ -93,7 +94,7 @@ export class InviteService {
     }
 
     if (!resolvedChildId) {
-      throw new Error('Provide childId or newChild');
+      throw new BadRequestException('Provide childId or newChild');
     }
 
     const parentChildren = await this.store.listChildrenForParent(input.actorUserId);
@@ -104,7 +105,7 @@ export class InviteService {
 
     const section = await this.store.getSectionById(invite.sectionId);
     if (!section) {
-      throw new Error('Section not found');
+      throw new BadRequestException('Section not found');
     }
 
     if (section.autoAcceptJoinRequests) {
@@ -133,7 +134,7 @@ export class InviteService {
   }) {
     const request = await this.store.getJoinRequestById(input.requestId);
     if (!request) {
-      throw new Error('Join request not found');
+      throw new BadRequestException('Join request not found');
     }
 
     await this.rbac.assertPermission(input.actorUserId, 'admin:manage_section', request.sectionId);
@@ -149,11 +150,11 @@ export class InviteService {
   async createShareInviteFromParent(input: { actorUserId: string; sectionId: string; expiresAt?: string }) {
     const section = await this.store.getSectionById(input.sectionId);
     if (!section) {
-      throw new Error('Section not found');
+      throw new BadRequestException('Section not found');
     }
 
     if (!section.allowParentReshareInvites) {
-      throw new Error('Section does not allow parent reshare invites');
+      throw new BadRequestException('Section does not allow parent reshare invites');
     }
 
     return this.store.createInvite({

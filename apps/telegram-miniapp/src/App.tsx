@@ -28,7 +28,7 @@ export function App() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [birthDate, setBirthDate] = useState('');
-  const [inviteMode, setInviteMode] = useState<'child' | 'new'>('child');
+  const [inviteMode, setInviteMode] = useState<'child' | 'new'>('new');
 
   useEffect(() => {
     void bootstrap();
