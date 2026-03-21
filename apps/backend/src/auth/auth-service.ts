@@ -27,6 +27,9 @@ interface AuthResponse {
 }
 
 export class AuthService {
+  private readonly allowUnsafeTelegramIdFallback =
+    process.env.AUTH_ALLOW_UNSAFE_TELEGRAM_ID === 'true' || process.env.NODE_ENV !== 'production';
+
   constructor(
     private readonly tokenService: TokenService,
     private readonly identityStore: IdentityStore,
@@ -125,6 +128,9 @@ export class AuthService {
     const params = new URLSearchParams(initData);
     const direct = params.get('id');
     if (direct) {
+      if (!this.allowUnsafeTelegramIdFallback && !params.get('hash')) {
+        throw new Error('Unsafe telegram id fallback is disabled');
+      }
       return direct;
     }
 
