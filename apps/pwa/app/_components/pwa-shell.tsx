@@ -772,9 +772,12 @@ export default function PwaShell() {
   return (
     <main className="app-main modern-shell">
       <div className="top-fixed-bar">
-        <span className="hero-chip">{isCoachView ? 'Тренер' : 'Родитель'}</span>
-        <button className="hero-chip ghost" onClick={logout}>
-          Выйти
+        <button className="logout-icon-btn" onClick={logout} aria-label="Выйти">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M10 17l5-5-5-5" />
+            <path d="M15 12H4" />
+            <path d="M20 4v16" />
+          </svg>
         </button>
       </div>
 
@@ -785,6 +788,28 @@ export default function PwaShell() {
           <p>{isCoachView ? activeSection?.name ?? 'Секция не выбрана' : 'Свайп карточек детей ниже'}</p>
         </div>
       </section>
+
+      {!isCoachView && context.children.length > 0 && (
+        <div className="child-chip-row" role="tablist" aria-label="Дети">
+          {context.children.map((child) => {
+            const isActiveChild = child.id === activeChildId;
+            return (
+              <button
+                key={child.id}
+                type="button"
+                className={`child-chip ${isActiveChild ? 'active' : ''}`}
+                onClick={() => void handleChildChange(child.id)}
+                aria-pressed={isActiveChild}
+              >
+                <span className="child-chip-avatar" aria-hidden="true">
+                  {`${child.firstName?.[0] ?? ''}${child.lastName?.[0] ?? ''}`.trim() || 'R'}
+                </span>
+                <span className="child-chip-name">{child.firstName}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       <section className="hero-card fade-in-2">
         <p className="hero-card-kicker">Быстрый статус</p>
@@ -800,28 +825,6 @@ export default function PwaShell() {
       </section>
 
       <section className="content-sheet fade-in-2">
-        {!isCoachView && context.children.length > 0 && (
-          <div className="child-chip-row" role="tablist" aria-label="Дети">
-            {context.children.map((child) => {
-              const isActiveChild = child.id === activeChildId;
-              return (
-                <button
-                  key={child.id}
-                  type="button"
-                  className={`child-chip ${isActiveChild ? 'active' : ''}`}
-                  onClick={() => void handleChildChange(child.id)}
-                  aria-pressed={isActiveChild}
-                >
-                  <span className="child-chip-avatar" aria-hidden="true">
-                    {`${child.firstName?.[0] ?? ''}${child.lastName?.[0] ?? ''}`.trim() || 'R'}
-                  </span>
-                  <span className="child-chip-name">{child.firstName}</span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-
         <div className="section-chip-row" role="tablist" aria-label="Секции">
           {context.sections.map((section) => {
             const isActiveSection = section.id === activeSectionId;

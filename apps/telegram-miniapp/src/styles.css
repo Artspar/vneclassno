@@ -66,15 +66,27 @@ h3 {
   transform: translateX(-50%);
   width: min(430px, calc(100vw - 20px));
   display: flex;
-  justify-content: space-between;
-  gap: 8px;
+  justify-content: flex-end;
   z-index: 95;
 }
 
-.top-fixed-bar .hero-chip,
-.top-fixed-bar .hero-chip.ghost {
-  height: 40px;
-  min-height: 40px;
+.logout-icon-btn {
+  width: 42px;
+  height: 42px;
+  min-height: 42px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.46);
+  background: rgba(255, 255, 255, 0.26);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.logout-icon-btn svg {
+  width: 20px;
+  height: 20px;
 }
 
 .hero-head {
@@ -140,7 +152,7 @@ h3 {
   gap: 12px;
   overflow-x: auto;
   padding: 6px 12px 8px;
-  margin: 0 0 10px;
+  margin: 8px 0 14px;
   max-width: 100%;
   scrollbar-width: none;
   scroll-snap-type: x mandatory;
@@ -171,6 +183,7 @@ h3 {
   font-size: 14px;
   font-weight: 700;
   scroll-snap-align: center;
+  scroll-snap-stop: always;
 }
 
 .child-chip-avatar {
@@ -207,7 +220,7 @@ h3 {
   margin-top: 0;
   background: var(--sheet);
   border-radius: 28px;
-  margin: 0 12px;
+  margin: 0 14px;
   padding: 16px 14px 24px;
   min-height: calc(100dvh - 220px);
   display: grid;
@@ -621,9 +634,9 @@ button:disabled {
 }
 
 .section-chip {
-  width: 128px !important;
-  min-width: 128px !important;
-  max-width: 128px !important;
+  width: 124px !important;
+  min-width: 124px !important;
+  max-width: 124px !important;
   height: 42px !important;
   border-radius: 999px !important;
   min-height: 42px !important;
