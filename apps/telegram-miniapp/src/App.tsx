@@ -829,14 +829,21 @@ export function App() {
           {isCoachView ? (
             <h2>Тренерский режим</h2>
           ) : context.children.length > 0 ? (
-            <div className="title-child-select-wrap">
-              <select className="title-child-select" value={activeChildId} onChange={(e) => void handleChildChange(e.target.value)}>
-                {context.children.map((child) => (
-                  <option key={child.id} value={child.id}>
-                    {child.firstName} {child.lastName}
-                  </option>
-                ))}
-              </select>
+            <div className="child-chip-row" role="tablist" aria-label="Дети">
+              {context.children.map((child) => {
+                const isActiveChild = child.id === activeChildId;
+                return (
+                  <button
+                    key={child.id}
+                    type="button"
+                    className={`child-chip ${isActiveChild ? 'active' : ''}`}
+                    onClick={() => void handleChildChange(child.id)}
+                    aria-pressed={isActiveChild}
+                  >
+                    {child.firstName}
+                  </button>
+                );
+              })}
             </div>
           ) : (
             <h2>Ребенок не выбран</h2>
