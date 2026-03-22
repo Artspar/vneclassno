@@ -58,9 +58,28 @@ h3 {
   padding-bottom: 108px;
 }
 
+
+.top-fixed-bar {
+  position: fixed;
+  top: max(10px, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(430px, calc(100vw - 20px));
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  z-index: 95;
+}
+
+.top-fixed-bar .hero-chip,
+.top-fixed-bar .hero-chip.ghost {
+  height: 40px;
+  min-height: 40px;
+}
+
 .hero-head {
   color: #fff;
-  padding: max(14px, env(safe-area-inset-top)) 16px 30px;
+  padding: max(66px, calc(env(safe-area-inset-top) + 56px)) 16px 22px;
   display: grid;
   gap: 14px;
 }
@@ -94,6 +113,7 @@ h3 {
   font-weight: 800;
   color: #fff;
   background: linear-gradient(165deg, #49b8ff, #0f7cff);
+  border: 3px solid rgba(255,255,255,0.35);
   box-shadow: 0 16px 34px rgba(12, 38, 89, 0.45);
 }
 
@@ -117,14 +137,14 @@ h3 {
 
 .child-chip-row {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   overflow-x: auto;
-  padding: 6px 12px 4px;
-  margin: 0 auto;
+  padding: 6px 12px 8px;
+  margin: 0 0 10px;
   max-width: 100%;
+  scrollbar-width: none;
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
 }
 
 .child-chip-row::-webkit-scrollbar {
@@ -132,32 +152,35 @@ h3 {
 }
 
 .child-chip {
-  width: 136px;
-  height: 156px;
-  min-height: 156px;
+  width: 152px;
+  min-width: 152px;
+  max-width: 152px;
+  height: 174px;
+  min-height: 174px;
   flex: 0 0 auto;
   display: inline-flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  gap: 8px;
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.36);
+  gap: 10px;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.34);
   background: rgba(255, 255, 255, 0.12);
   color: #ffffff;
-  padding: 14px 10px 10px;
-  font-size: 13px;
+  padding: 16px 10px 10px;
+  font-size: 14px;
   font-weight: 700;
+  scroll-snap-align: center;
 }
 
 .child-chip-avatar {
-  width: 64px;
-  height: 64px;
+  width: 76px;
+  height: 76px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
-  justify-content: flex-start;
-  font-size: 16px;
+  justify-content: center;
+  font-size: 20px;
   font-weight: 800;
   letter-spacing: 0.02em;
   color: #2f3d5b;
@@ -170,21 +193,21 @@ h3 {
   line-height: 1.2;
   text-align: center;
   max-width: 100%;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .child-chip.active {
-  border-color: rgba(255, 255, 255, 0.58);
-  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.24);
 }
 
+
 .content-sheet {
-  margin-top: -8px;
+  margin-top: 0;
   background: var(--sheet);
   border-radius: 28px;
+  margin: 0 12px;
   padding: 16px 14px 24px;
   min-height: calc(100dvh - 220px);
   display: grid;
@@ -537,7 +560,7 @@ button:disabled {
 }
 
 .hero-card {
-  margin: 0 12px 22px;
+  margin: 0 12px 18px;
   border-radius: 14px;
   border: 1px solid #d6deed;
   background: #f6f9ff;
@@ -589,7 +612,7 @@ button:disabled {
   gap: 8px;
   overflow-x: auto;
   padding: 2px 12px 12px;
-  margin: 0 0 14px;
+  margin: 0 0 12px;
   scrollbar-width: none;
 }
 
@@ -602,7 +625,9 @@ button:disabled {
   min-width: 128px !important;
   max-width: 128px !important;
   height: 42px !important;
+  border-radius: 999px !important;
   min-height: 42px !important;
+  border-radius: 999px !important;
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;

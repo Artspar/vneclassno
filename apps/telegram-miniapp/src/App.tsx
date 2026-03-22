@@ -819,39 +819,16 @@ export function App() {
 
   return (
     <div className="page modern-shell">
+      <div className="top-fixed-bar">
+        <span className="hero-chip">{isCoachView ? 'Тренер' : 'Родитель'}</span>
+        <span className="hero-chip">Online</span>
+      </div>
+
       <section className="hero-head">
-        <div className="hero-top-row">
-          <span className="hero-chip">{isCoachView ? 'Тренер' : 'Родитель'}</span>
-          <span className="hero-chip">Online</span>
-        </div>
-        <div className="hero-logo">V</div>
+        <div className="hero-logo">{isCoachView ? 'V' : `${activeChild?.firstName?.[0] ?? ''}${activeChild?.lastName?.[0] ?? ''}`.trim() || 'R'}</div>
         <div className="hero-title-wrap">
-          {isCoachView ? (
-            <h2>Тренерский режим</h2>
-          ) : context.children.length > 0 ? (
-            <div className="child-chip-row" role="tablist" aria-label="Дети">
-              {context.children.map((child) => {
-                const isActiveChild = child.id === activeChildId;
-                return (
-                  <button
-                    key={child.id}
-                    type="button"
-                    className={`child-chip ${isActiveChild ? 'active' : ''}`}
-                    onClick={() => void handleChildChange(child.id)}
-                    aria-pressed={isActiveChild}
-                  >
-                    <span className="child-chip-avatar" aria-hidden="true">
-                      {`${child.firstName?.[0] ?? ''}${child.lastName?.[0] ?? ''}`.trim() || 'R'}
-                    </span>
-                    <span className="child-chip-name">{child.firstName}</span>
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            <h2>Ребенок не выбран</h2>
-          )}
-          <p>{isCoachView ? activeSection?.name ?? 'Секция не выбрана' : 'Выберите секцию ниже'}</p>
+          <h2>{isCoachView ? 'Тренерский режим' : activeChild ? `${activeChild.firstName} ${activeChild.lastName}` : 'Ребенок не выбран'}</h2>
+          <p>{isCoachView ? activeSection?.name ?? 'Секция не выбрана' : 'Свайп карточек детей ниже'}</p>
         </div>
       </section>
 
@@ -869,6 +846,28 @@ export function App() {
       </section>
 
       <section className="content-sheet">
+        {!isCoachView && context.children.length > 0 && (
+          <div className="child-chip-row" role="tablist" aria-label="Дети">
+            {context.children.map((child) => {
+              const isActiveChild = child.id === activeChildId;
+              return (
+                <button
+                  key={child.id}
+                  type="button"
+                  className={`child-chip ${isActiveChild ? 'active' : ''}`}
+                  onClick={() => void handleChildChange(child.id)}
+                  aria-pressed={isActiveChild}
+                >
+                  <span className="child-chip-avatar" aria-hidden="true">
+                    {`${child.firstName?.[0] ?? ''}${child.lastName?.[0] ?? ''}`.trim() || 'R'}
+                  </span>
+                  <span className="child-chip-name">{child.firstName}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         <div className="section-chip-row" role="tablist" aria-label="Секции">
           {context.sections.map((section) => {
             const isActiveSection = section.id === activeSectionId;
