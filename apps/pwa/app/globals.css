@@ -21,7 +21,10 @@ html,
 body {
   margin: 0;
   padding: 0;
-  overflow-x: hidden;
+  width: 100%;
+  min-height: 100%;
+  overflow: hidden;
+  overscroll-behavior-y: none;
   font-family: var(--font-body), 'Segoe UI', sans-serif;
   color: var(--text);
   background: radial-gradient(circle at 50% -20%, #5d5f77 0%, var(--bg-dark) 35%, var(--bg-dark-2) 100%);
@@ -69,9 +72,14 @@ h3 {
 .app-main {
   max-width: 460px;
   margin: 0 auto;
+  height: 100dvh;
   min-height: 100dvh;
   position: relative;
   overflow-x: clip;
+  overflow-y: auto;
+  overscroll-behavior-y: none;
+  -webkit-overflow-scrolling: touch;
+  background: radial-gradient(circle at 50% -20%, #5d5f77 0%, var(--bg-dark) 35%, var(--bg-dark-2) 100%);
 }
 
 .modern-shell {
