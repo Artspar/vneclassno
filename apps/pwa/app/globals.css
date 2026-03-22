@@ -206,13 +206,14 @@ h3 {
 
 .child-chip-row {
   display: flex;
-  gap: 10px;
+  gap: 14px;
   overflow-x: auto;
-  padding: 4px 14px 10px;
+  padding: 6px 20px 10px;
   margin: 6px 0 10px;
   max-width: 100%;
   scrollbar-width: none;
   scroll-snap-type: x mandatory;
+  scroll-padding-inline: 20px;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -221,28 +222,26 @@ h3 {
 }
 
 .child-chip {
-  width: calc(100vw - 52px);
-  max-width: 420px;
-  min-width: calc(100vw - 52px);
-  height: 126px;
-  min-height: 126px;
+  width: calc(100vw - 68px);
+  max-width: 404px;
+  min-width: calc(100vw - 68px);
+  min-height: 132px;
   flex: 0 0 auto;
   display: inline-flex;
-  flex-direction: row;
+  flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
-  gap: 14px;
-  border-radius: 22px;
-  border: 1px solid rgba(255, 255, 255, 0.42);
-  background: rgba(255, 255, 255, 0.08);
+  justify-content: center;
+  gap: 8px;
+  border-radius: 0;
+  border: 0;
+  background: transparent;
   color: #e8eeff;
-  padding: 14px 16px;
-  font-size: 18px;
+  padding: 6px 2px;
+  font-size: 20px;
   font-weight: 700;
   scroll-snap-align: start;
   scroll-snap-stop: always;
-  backdrop-filter: blur(6px);
-  transition: transform 180ms ease, opacity 180ms ease, border-color 180ms ease;
+  transition: transform 180ms ease, opacity 180ms ease;
 }
 
 .child-chip-avatar {
@@ -263,7 +262,7 @@ h3 {
 
 .child-chip-name {
   line-height: 1.15;
-  text-align: left;
+  text-align: center;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -271,15 +270,13 @@ h3 {
 }
 
 .child-chip.active {
-  border-color: rgba(255, 255, 255, 0.78);
-  background: rgba(255, 255, 255, 0.14);
   transform: scale(1);
   opacity: 1;
 }
 
 .child-chip:not(.active) {
-  transform: scale(0.985);
-  opacity: 0.68;
+  transform: scale(0.96);
+  opacity: 0.58;
 }
 
 
