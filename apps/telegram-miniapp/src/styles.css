@@ -251,8 +251,8 @@ h3 {
 }
 
 .child-chip:not(.active) {
-  transform: scale(0.96);
-  opacity: 0.58;
+  transform: scale(0.985);
+  opacity: 0.92;
 }
 
 .hero-carousel-wrap {

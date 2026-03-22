@@ -279,8 +279,8 @@ h3 {
 }
 
 .child-chip:not(.active) {
-  transform: scale(0.96);
-  opacity: 0.58;
+  transform: scale(0.985);
+  opacity: 0.92;
 }
 
 .hero-carousel-wrap {
@@ -781,3 +781,19 @@ button:disabled {
 }
 
 
+
+
+.profile-logout-btn {
+  width: 100%;
+  min-height: 44px;
+  border-radius: 14px;
+  border: 1px solid #c2363f;
+  background: #e24852;
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 8px 16px rgba(194, 54, 63, 0.28);
+}
+
+.profile-logout-btn:disabled {
+  opacity: 0.6;
+}

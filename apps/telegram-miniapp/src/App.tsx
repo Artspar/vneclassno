@@ -570,7 +570,7 @@ export function App() {
 
   useEffect(() => {
     const roleIsCoach = activeRole === 'coach' || activeRole === 'section_admin' || activeRole === 'super_admin';
-    if (roleIsCoach || !attendanceBoard?.items?.length) {
+    if (roleIsCoach || (tab !== 'attendance' && tab !== 'schedule') || !attendanceBoard?.items?.length) {
       return;
     }
 
@@ -589,7 +589,7 @@ export function App() {
       activeChildId: fallbackChildId,
       activeSectionId: activeSectionId || undefined,
     }).catch(() => {});
-  }, [activeRole, attendanceBoard, activeChildId, accessToken, activeSectionId]);
+  }, [activeRole, attendanceBoard, activeChildId, accessToken, activeSectionId, tab]);
 
   const activeChild = context?.children.find((child) => child.id === activeChildId) ?? context?.children[0];
   const activeSection = context?.sections.find((section) => section.id === activeSectionId) ?? context?.sections[0];
@@ -647,10 +647,20 @@ export function App() {
     }
   }
 
-  async function handleChildChange(nextChildId: string) {
+  async function handleChildChange(nextChildId: string, source: 'manual' | 'scroll' = 'manual') {
+    if (!nextChildId || nextChildId === activeChildId) {
+      return;
+    }
+
     setActiveChildId(nextChildId);
     setParticipationEditOpen(false);
     setNotificationEditIds([]);
+
+    if (source === 'manual') {
+      const container = childCarouselRef.current;
+      const target = container?.querySelector<HTMLButtonElement>(`.child-chip[data-child-id="${nextChildId}"]`);
+      target?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    }
 
     if (!accessToken) {
       return;
@@ -736,7 +746,7 @@ export function App() {
     }
 
     if (nearestId && nearestId !== activeChildId) {
-      void handleChildChange(nearestId);
+      void handleChildChange(nearestId, 'scroll');
     }
   }
 
@@ -847,16 +857,6 @@ export function App() {
   }, [isCoachView, tab, notificationFeed, readNotificationIds]);
 
   useEffect(() => {
-    const container = childCarouselRef.current;
-    if (!container || isCoachView || !activeChildId) {
-      return;
-    }
-
-    const activeCard = container.querySelector<HTMLButtonElement>(`.child-chip[data-child-id="${activeChildId}"]`);
-    activeCard?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-  }, [activeChildId, isCoachView]);
-
-  useEffect(() => {
     return () => {
       if (childCarouselTimerRef.current !== null) {
         window.clearTimeout(childCarouselTimerRef.current);
@@ -887,16 +887,6 @@ export function App() {
 
   return (
     <div className="page modern-shell">
-      <div className="top-fixed-bar">
-        <button className="logout-icon-btn" onClick={() => window.location.reload()} aria-label="Обновить">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M10 17l5-5-5-5" />
-            <path d="M15 12H4" />
-            <path d="M20 4v16" />
-          </svg>
-        </button>
-      </div>
-
       <section className="hero-head">
         {isCoachView ? (
           <>

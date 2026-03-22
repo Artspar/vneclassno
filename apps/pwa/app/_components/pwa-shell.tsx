@@ -528,17 +528,6 @@ export default function PwaShell() {
   }, [accessToken, activeSectionId, activeChildId, activeRole]);
 
   useEffect(() => {
-    const roleIsCoach = activeRole === 'coach' || activeRole === 'section_admin' || activeRole === 'super_admin';
-    const container = childCarouselRef.current;
-    if (!container || roleIsCoach || !activeChildId) {
-      return;
-    }
-
-    const activeCard = container.querySelector<HTMLButtonElement>(`.child-chip[data-child-id="${activeChildId}"]`);
-    activeCard?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-  }, [activeChildId, activeRole]);
-
-  useEffect(() => {
     return () => {
       if (childCarouselTimerRef.current !== null) {
         window.clearTimeout(childCarouselTimerRef.current);
@@ -569,7 +558,7 @@ export default function PwaShell() {
 
   useEffect(() => {
     const roleIsCoach = activeRole === 'coach' || activeRole === 'section_admin' || activeRole === 'super_admin';
-    if (roleIsCoach || !attendanceBoard?.items?.length) {
+    if (roleIsCoach || (tab !== 'attendance' && tab !== 'schedule') || !attendanceBoard?.items?.length) {
       return;
     }
 
@@ -588,7 +577,7 @@ export default function PwaShell() {
       activeChildId: fallbackChildId,
       activeSectionId: activeSectionId || undefined,
     }).catch(() => {});
-  }, [activeRole, attendanceBoard, activeChildId, accessToken, activeSectionId]);
+  }, [activeRole, attendanceBoard, activeChildId, accessToken, activeSectionId, tab]);
 
   const activeChild = context?.children.find((child) => child.id === activeChildId) ?? context?.children[0];
   const activeSection = context?.sections.find((section) => section.id === activeSectionId) ?? context?.sections[0];
@@ -645,10 +634,20 @@ export default function PwaShell() {
     }
   }
 
-  async function handleChildChange(nextChildId: string) {
+  async function handleChildChange(nextChildId: string, source: 'manual' | 'scroll' = 'manual') {
+    if (!nextChildId || nextChildId === activeChildId) {
+      return;
+    }
+
     setActiveChildId(nextChildId);
     setParticipationEditOpen(false);
     setNotificationEditIds([]);
+
+    if (source === 'manual') {
+      const container = childCarouselRef.current;
+      const target = container?.querySelector<HTMLButtonElement>(`.child-chip[data-child-id="${nextChildId}"]`);
+      target?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    }
 
     if (!accessToken) {
       return;
@@ -741,7 +740,7 @@ export default function PwaShell() {
     }
 
     if (nearestId && nearestId !== activeChildId) {
-      void handleChildChange(nearestId);
+      void handleChildChange(nearestId, 'scroll');
     }
   }
 
@@ -839,16 +838,6 @@ export default function PwaShell() {
 
   return (
     <main className="app-main modern-shell">
-      <div className="top-fixed-bar">
-        <button className="logout-icon-btn" onClick={logout} aria-label="Выйти">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M10 17l5-5-5-5" />
-            <path d="M15 12H4" />
-            <path d="M20 4v16" />
-          </svg>
-        </button>
-      </div>
-
       <section className="hero-head fade-in-1">
         {isCoachView ? (
           <>
@@ -1285,6 +1274,9 @@ export default function PwaShell() {
             <Link href="/demo" className="link-block">
               Открыть UI Test Lab
             </Link>
+            <button type="button" className="profile-logout-btn" onClick={logout}>
+              Выйти из аккаунта
+            </button>
           </>
         )}
         </section>
