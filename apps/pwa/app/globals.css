@@ -279,6 +279,21 @@ h3 {
   opacity: 0.58;
 }
 
+.hero-carousel-wrap {
+  margin: 8px 0 6px;
+}
+
+.hero-child-chip-row {
+  margin: 0;
+  padding-top: 8px;
+}
+
+.hero-child-chip-row .child-chip {
+  min-width: calc(100vw - 76px);
+  width: calc(100vw - 76px);
+  max-width: 388px;
+}
+
 
 .content-sheet {
   margin-top: 0;

@@ -535,7 +535,7 @@ export default function PwaShell() {
     }
 
     const activeCard = container.querySelector<HTMLButtonElement>(`.child-chip[data-child-id="${activeChildId}"]`);
-    activeCard?.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+    activeCard?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
   }, [activeChildId, activeRole]);
 
   useEffect(() => {
@@ -850,52 +850,54 @@ export default function PwaShell() {
       </div>
 
       <section className="hero-head fade-in-1">
-        <div className="hero-logo">{isCoachView ? 'V' : `${activeChild?.firstName?.[0] ?? ''}${activeChild?.lastName?.[0] ?? ''}`.trim() || 'R'}</div>
-        <div className="hero-title-wrap">
-          <h2>{isCoachView ? 'Тренерский режим' : activeChild ? `${activeChild.firstName} ${activeChild.lastName}` : 'Ребенок не выбран'}</h2>
-          <p>{isCoachView ? activeSection?.name ?? 'Секция не выбрана' : 'Свайп карточек детей ниже'}</p>
-        </div>
+        {isCoachView ? (
+          <>
+            <div className="hero-logo">V</div>
+            <div className="hero-title-wrap">
+              <h2>Тренерский режим</h2>
+              <p>{activeSection?.name ?? 'Секция не выбрана'}</p>
+            </div>
+          </>
+        ) : (
+          <div className="child-carousel-wrap hero-carousel-wrap">
+            <div ref={childCarouselRef} className="child-chip-row hero-child-chip-row" role="tablist" aria-label="Дети" onScroll={handleChildCarouselScroll}>
+              {context.children.map((child) => {
+                const isActiveChild = child.id === activeChildId;
+                return (
+                  <button
+                    key={child.id}
+                    type="button"
+                    data-child-id={child.id}
+                    className={`child-chip ${isActiveChild ? 'active' : ''}`}
+                    onClick={() => void handleChildChange(child.id)}
+                    aria-pressed={isActiveChild}
+                  >
+                    <span className="child-chip-avatar" aria-hidden="true">
+                      {`${child.firstName?.[0] ?? ''}${child.lastName?.[0] ?? ''}`.trim() || 'R'}
+                    </span>
+                    <span className="child-chip-name">{child.firstName} {child.lastName}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="child-carousel-dots" aria-label="Пагинация детей">
+              {context.children.map((child) => {
+                const isActiveChild = child.id === activeChildId;
+                return (
+                  <button
+                    key={`dot-${child.id}`}
+                    type="button"
+                    className={`child-dot ${isActiveChild ? 'active' : ''}`}
+                    onClick={() => void handleChildChange(child.id)}
+                    aria-label={`Выбрать ${child.firstName}`}
+                    aria-pressed={isActiveChild}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        )}
       </section>
-
-      {!isCoachView && context.children.length > 0 && (
-        <div className="child-carousel-wrap">
-          <div ref={childCarouselRef} className="child-chip-row" role="tablist" aria-label="Дети" onScroll={handleChildCarouselScroll}>
-            {context.children.map((child) => {
-              const isActiveChild = child.id === activeChildId;
-              return (
-                <button
-                  key={child.id}
-                  type="button"
-                  data-child-id={child.id}
-                  className={`child-chip ${isActiveChild ? 'active' : ''}`}
-                  onClick={() => void handleChildChange(child.id)}
-                  aria-pressed={isActiveChild}
-                >
-                  <span className="child-chip-avatar" aria-hidden="true">
-                    {`${child.firstName?.[0] ?? ''}${child.lastName?.[0] ?? ''}`.trim() || 'R'}
-                  </span>
-                  <span className="child-chip-name">{child.firstName}</span>
-                </button>
-              );
-            })}
-          </div>
-          <div className="child-carousel-dots" aria-label="Пагинация детей">
-            {context.children.map((child) => {
-              const isActiveChild = child.id === activeChildId;
-              return (
-                <button
-                  key={`dot-${child.id}`}
-                  type="button"
-                  className={`child-dot ${isActiveChild ? 'active' : ''}`}
-                  onClick={() => void handleChildChange(child.id)}
-                  aria-label={`Выбрать ${child.firstName}`}
-                  aria-pressed={isActiveChild}
-                />
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       <section className="hero-card fade-in-2">
         <p className="hero-card-kicker">Быстрый статус</p>
