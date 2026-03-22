@@ -521,12 +521,12 @@ button:disabled {
 
   .tabbar,
   .modern-tabbar {
-    width: calc(100vw - 20px);
+    width: calc(100% - 20px);
   }
 }
 
 .hero-card {
-  margin: 0 0 14px;
+  margin: 0 0 18px;
   border-radius: 14px;
   border: 1px solid #d6deed;
   background: #f6f9ff;
@@ -578,7 +578,7 @@ button:disabled {
   gap: 8px;
   overflow-x: auto;
   padding: 2px 0 10px;
-  margin: 0 0 8px;
+  margin: 4px 0 12px;
   scrollbar-width: none;
 }
 
@@ -588,7 +588,8 @@ button:disabled {
 
 .section-chip {
   width: auto;
-  min-height: 40px;
+  min-height: 42px;
+  height: 42px;
   min-width: 112px;
   flex: 0 0 auto;
   display: inline-flex;
