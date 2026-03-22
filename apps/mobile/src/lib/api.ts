@@ -1,18 +1,40 @@
 import { config } from './config';
 
-export async function apiGet<T>(path: string, token?: string): Promise<T> {
-  const response = await fetch(`${config.apiBaseUrl}${path}`, {
-    headers: token
-      ? {
-          Authorization: `Bearer ${token}`,
-        }
-      : undefined,
-  });
+const REQUEST_TIMEOUT_MS = 15000;
 
-  if (!response.ok) {
-    const text = await response.text().catch(() => '');
-    throw new Error(text || `Request failed: ${response.status}`);
+type RequestInitExt = RequestInit & {
+  token?: string;
+};
+
+export async function apiRequest<T>(path: string, init?: RequestInitExt): Promise<T> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(`${config.apiBaseUrl}${path}`, {
+      ...init,
+      headers: {
+        'content-type': 'application/json',
+        ...(init?.token ? { authorization: `Bearer ${init.token}` } : {}),
+        ...(init?.headers ?? {}),
+      },
+      signal: controller.signal,
+    });
+
+    const data = (await response.json().catch(() => ({}))) as { error?: string } & T;
+
+    if (!response.ok) {
+      throw new Error(data.error ?? `Request failed: ${response.status}`);
+    }
+
+    return data as T;
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new Error('Сервер долго отвечает. Повторите попытку через 10-20 секунд.');
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  return response.json() as Promise<T>;
 }
