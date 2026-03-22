@@ -18,6 +18,11 @@ const spaceGrotesk = Space_Grotesk({
 export const metadata: Metadata = {
   title: 'VneClassno PWA',
   description: 'Invite onboarding for sections',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'VneClassno',
+  },
 };
 
 export const viewport: Viewport = {
@@ -26,6 +31,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: 'cover',
+  themeColor: '#404152',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
