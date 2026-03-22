@@ -37,6 +37,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ru">
+      <head>
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+      </head>
       <body className={`${manrope.variable} ${spaceGrotesk.variable}`}>
         <Script id="disable-mobile-zoom" strategy="beforeInteractive">
           {`(function(){
