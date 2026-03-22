@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   bulkUpdateAttendance,
   confirmParticipation,
@@ -164,6 +164,8 @@ export default function PwaShell() {
   const [shareChildId, setShareChildId] = useState('');
   const [linkBusy, setLinkBusy] = useState(false);
   const [telegramLinkUrl, setTelegramLinkUrl] = useState('');
+  const childCarouselRef = useRef<HTMLDivElement | null>(null);
+  const childCarouselTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const stored = window.localStorage.getItem(ACCESS_TOKEN_KEY) ?? '';
@@ -527,6 +529,25 @@ export default function PwaShell() {
 
   useEffect(() => {
     const roleIsCoach = activeRole === 'coach' || activeRole === 'section_admin' || activeRole === 'super_admin';
+    const container = childCarouselRef.current;
+    if (!container || roleIsCoach || !activeChildId) {
+      return;
+    }
+
+    const activeCard = container.querySelector<HTMLButtonElement>(`.child-chip[data-child-id="${activeChildId}"]`);
+    activeCard?.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+  }, [activeChildId, activeRole]);
+
+  useEffect(() => {
+    return () => {
+      if (childCarouselTimerRef.current !== null) {
+        window.clearTimeout(childCarouselTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const roleIsCoach = activeRole === 'coach' || activeRole === 'section_admin' || activeRole === 'super_admin';
     if (roleIsCoach || tab !== 'schedule' || !notificationFeed?.items?.length) {
       return;
     }
@@ -687,6 +708,53 @@ export default function PwaShell() {
     }
   }
 
+  function syncActiveChildFromCarousel() {
+    if (isCoachView || !context?.children?.length) {
+      return;
+    }
+
+    const container = childCarouselRef.current;
+    if (!container) {
+      return;
+    }
+
+    const cards = Array.from(container.querySelectorAll<HTMLButtonElement>('.child-chip[data-child-id]'));
+    if (cards.length === 0) {
+      return;
+    }
+
+    const center = container.scrollLeft + container.clientWidth / 2;
+    let nearestId = activeChildId;
+    let minDistance = Number.POSITIVE_INFINITY;
+
+    for (const card of cards) {
+      const id = card.dataset.childId;
+      if (!id) {
+        continue;
+      }
+      const cardCenter = card.offsetLeft + card.offsetWidth / 2;
+      const distance = Math.abs(cardCenter - center);
+      if (distance < minDistance) {
+        minDistance = distance;
+        nearestId = id;
+      }
+    }
+
+    if (nearestId && nearestId !== activeChildId) {
+      void handleChildChange(nearestId);
+    }
+  }
+
+  function handleChildCarouselScroll() {
+    if (childCarouselTimerRef.current !== null) {
+      window.clearTimeout(childCarouselTimerRef.current);
+    }
+
+    childCarouselTimerRef.current = window.setTimeout(() => {
+      syncActiveChildFromCarousel();
+    }, 120);
+  }
+
   async function handleTelegramLinkRequest() {
     if (!accessToken) {
       return;
@@ -791,13 +859,14 @@ export default function PwaShell() {
 
       {!isCoachView && context.children.length > 0 && (
         <div className="child-carousel-wrap">
-          <div className="child-chip-row" role="tablist" aria-label="Дети">
+          <div ref={childCarouselRef} className="child-chip-row" role="tablist" aria-label="Дети" onScroll={handleChildCarouselScroll}>
             {context.children.map((child) => {
               const isActiveChild = child.id === activeChildId;
               return (
                 <button
                   key={child.id}
                   type="button"
+                  data-child-id={child.id}
                   className={`child-chip ${isActiveChild ? 'active' : ''}`}
                   onClick={() => void handleChildChange(child.id)}
                   aria-pressed={isActiveChild}

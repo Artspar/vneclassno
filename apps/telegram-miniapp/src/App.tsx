@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   acceptInvite,
   bulkUpdateAttendance,
@@ -195,6 +195,8 @@ export function App() {
   const [linkOtpRequestId, setLinkOtpRequestId] = useState('');
   const [linkStatus, setLinkStatus] = useState('');
   const [linkBusy, setLinkBusy] = useState(false);
+  const childCarouselRef = useRef<HTMLDivElement | null>(null);
+  const childCarouselTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     void bootstrap();
@@ -700,6 +702,54 @@ export function App() {
     }
   }
 
+
+  function syncActiveChildFromCarousel() {
+    if (isCoachView || !context?.children?.length) {
+      return;
+    }
+
+    const container = childCarouselRef.current;
+    if (!container) {
+      return;
+    }
+
+    const cards = Array.from(container.querySelectorAll<HTMLButtonElement>('.child-chip[data-child-id]'));
+    if (cards.length === 0) {
+      return;
+    }
+
+    const center = container.scrollLeft + container.clientWidth / 2;
+    let nearestId = activeChildId;
+    let minDistance = Number.POSITIVE_INFINITY;
+
+    for (const card of cards) {
+      const id = card.dataset.childId;
+      if (!id) {
+        continue;
+      }
+      const cardCenter = card.offsetLeft + card.offsetWidth / 2;
+      const distance = Math.abs(cardCenter - center);
+      if (distance < minDistance) {
+        minDistance = distance;
+        nearestId = id;
+      }
+    }
+
+    if (nearestId && nearestId !== activeChildId) {
+      void handleChildChange(nearestId);
+    }
+  }
+
+  function handleChildCarouselScroll() {
+    if (childCarouselTimerRef.current !== null) {
+      window.clearTimeout(childCarouselTimerRef.current);
+    }
+
+    childCarouselTimerRef.current = window.setTimeout(() => {
+      syncActiveChildFromCarousel();
+    }, 120);
+  }
+
   async function handlePhoneLinkRequestOtp() {
     setLinkBusy(true);
     setError('');
@@ -796,6 +846,24 @@ export function App() {
     persistReadNotifications(next);
   }, [isCoachView, tab, notificationFeed, readNotificationIds]);
 
+  useEffect(() => {
+    const container = childCarouselRef.current;
+    if (!container || isCoachView || !activeChildId) {
+      return;
+    }
+
+    const activeCard = container.querySelector<HTMLButtonElement>(`.child-chip[data-child-id="${activeChildId}"]`);
+    activeCard?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+  }, [activeChildId, isCoachView]);
+
+  useEffect(() => {
+    return () => {
+      if (childCarouselTimerRef.current !== null) {
+        window.clearTimeout(childCarouselTimerRef.current);
+      }
+    };
+  }, []);
+
   if (!accessToken || !context) {
     return (
       <div className="page modern-shell">
@@ -839,13 +907,14 @@ export function App() {
 
       {!isCoachView && context.children.length > 0 && (
         <div className="child-carousel-wrap">
-          <div className="child-chip-row" role="tablist" aria-label="Дети">
+          <div ref={childCarouselRef} className="child-chip-row" role="tablist" aria-label="Дети" onScroll={handleChildCarouselScroll}>
             {context.children.map((child) => {
               const isActiveChild = child.id === activeChildId;
               return (
                 <button
                   key={child.id}
                   type="button"
+                  data-child-id={child.id}
                   className={`child-chip ${isActiveChild ? 'active' : ''}`}
                   onClick={() => void handleChildChange(child.id)}
                   aria-pressed={isActiveChild}

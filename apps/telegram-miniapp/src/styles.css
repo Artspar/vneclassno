@@ -150,7 +150,7 @@ h3 {
 
 
 .child-carousel-wrap {
-  margin: 0 0 8px;
+  margin: 2px 0 10px;
 }
 
 .child-carousel-dots {
@@ -162,26 +162,26 @@ h3 {
 }
 
 .child-dot {
-  width: 7px;
-  height: 7px;
+  width: 22px;
+  height: 4px;
   min-height: 7px;
   border-radius: 999px;
   border: 0;
-  background: rgba(255, 255, 255, 0.38);
+  background: rgba(255, 255, 255, 0.34);
   padding: 0;
 }
 
 .child-dot.active {
-  width: 18px;
-  background: rgba(255, 255, 255, 0.9);
+  width: 30px;
+  background: rgba(255, 255, 255, 0.92);
 }
 
 .child-chip-row {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   overflow-x: auto;
-  padding: 6px 12px 8px;
-  margin: 8px 0 14px;
+  padding: 4px 14px 10px;
+  margin: 6px 0 10px;
   max-width: 100%;
   scrollbar-width: none;
   scroll-snap-type: x mandatory;
@@ -193,36 +193,38 @@ h3 {
 }
 
 .child-chip {
-  width: 152px;
-  min-width: 152px;
-  max-width: 152px;
-  height: 174px;
-  min-height: 174px;
+  width: calc(100vw - 52px);
+  max-width: 420px;
+  min-width: calc(100vw - 52px);
+  height: 126px;
+  min-height: 126px;
   flex: 0 0 auto;
   display: inline-flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: flex-start;
-  gap: 10px;
-  border-radius: 24px;
-  border: 1px solid rgba(255, 255, 255, 0.34);
-  background: rgba(255, 255, 255, 0.12);
-  color: #6f7b92;
-  padding: 16px 10px 10px;
-  font-size: 14px;
+  gap: 14px;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  background: rgba(255, 255, 255, 0.08);
+  color: #e8eeff;
+  padding: 14px 16px;
+  font-size: 18px;
   font-weight: 700;
-  scroll-snap-align: center;
+  scroll-snap-align: start;
   scroll-snap-stop: always;
+  backdrop-filter: blur(6px);
+  transition: transform 180ms ease, opacity 180ms ease, border-color 180ms ease;
 }
 
 .child-chip-avatar {
-  width: 76px;
-  height: 76px;
+  width: 78px;
+  height: 78px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 800;
   letter-spacing: 0.02em;
   color: #2f3d5b;
@@ -232,16 +234,24 @@ h3 {
 }
 
 .child-chip-name {
-  line-height: 1.2;
-  text-align: center;
+  line-height: 1.15;
+  text-align: left;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .child-chip.active {
-  border-color: rgba(255, 255, 255, 0.55);
-  background: rgba(255, 255, 255, 0.24);
+  border-color: rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.14);
+  transform: scale(1);
+  opacity: 1;
+}
+
+.child-chip:not(.active) {
+  transform: scale(0.985);
+  opacity: 0.68;
 }
 
 
