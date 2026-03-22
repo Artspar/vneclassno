@@ -19,6 +19,7 @@
 
 body {
   margin: 0;
+  overflow-x: hidden;
   color: var(--text);
   background: radial-gradient(circle at 50% -20%, #5d5f77 0%, var(--bg-dark) 35%, var(--bg-dark-2) 100%);
   font-family: 'SF Pro Text', 'Segoe UI', sans-serif;
@@ -79,6 +80,7 @@ h3 {
   padding: 8px 12px;
   font-size: 12px;
   font-weight: 700;
+  scroll-snap-align: start;
 }
 
 .hero-logo {
@@ -117,9 +119,11 @@ h3 {
   display: flex;
   gap: 10px;
   overflow-x: auto;
-  padding: 4px 12px 2px;
+  padding: 6px 12px 4px;
   margin: 0 auto;
   max-width: 100%;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }
 
@@ -128,31 +132,31 @@ h3 {
 }
 
 .child-chip {
-  width: 112px;
-  height: 124px;
-  min-height: 124px;
+  width: 136px;
+  height: 156px;
+  min-height: 156px;
   flex: 0 0 auto;
   display: inline-flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 8px;
-  border-radius: 22px;
+  border-radius: 20px;
   border: 1px solid rgba(255, 255, 255, 0.36);
   background: rgba(255, 255, 255, 0.12);
   color: #ffffff;
-  padding: 10px 8px;
+  padding: 14px 10px 10px;
   font-size: 13px;
   font-weight: 700;
 }
 
 .child-chip-avatar {
-  width: 52px;
-  height: 52px;
+  width: 64px;
+  height: 64px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   font-size: 16px;
   font-weight: 800;
   letter-spacing: 0.02em;
@@ -166,6 +170,8 @@ h3 {
   line-height: 1.2;
   text-align: center;
   max-width: 100%;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -439,7 +445,7 @@ button:disabled {
 }
 
 .tabbar-label {
-  line-height: 1;
+  line-height: 1 !important;
 }
 
 .tabbar-badge {
@@ -531,7 +537,7 @@ button:disabled {
 }
 
 .hero-card {
-  margin: 0 12px 20px;
+  margin: 0 12px 22px;
   border-radius: 14px;
   border: 1px solid #d6deed;
   background: #f6f9ff;
@@ -582,7 +588,7 @@ button:disabled {
   display: flex;
   gap: 8px;
   overflow-x: auto;
-  padding: 2px 12px 10px;
+  padding: 2px 12px 12px;
   margin: 0 0 14px;
   scrollbar-width: none;
 }
@@ -592,23 +598,23 @@ button:disabled {
 }
 
 .section-chip {
-  width: 120px;
-  min-width: 120px;
-  max-width: 120px;
-  height: 40px;
-  min-height: 40px;
+  width: 128px !important;
+  min-width: 128px !important;
+  max-width: 128px !important;
+  height: 42px !important;
+  min-height: 42px !important;
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   border-radius: 999px;
   border: 1px solid #ccd5e6;
   background: #eef2fb;
   color: #4b5978;
-  padding: 0 12px;
+  padding: 0 12px !important;
   font-size: 13px;
   font-weight: 700;
-  line-height: 1;
+  line-height: 1 !important;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
