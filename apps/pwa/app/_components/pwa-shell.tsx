@@ -556,29 +556,6 @@ export default function PwaShell() {
     void Promise.all(unreadIds.map((id) => markNotificationRead(accessToken, id).catch(() => undefined)));
   }, [activeRole, tab, notificationFeed, readNotificationIds, accessToken]);
 
-  useEffect(() => {
-    const roleIsCoach = activeRole === 'coach' || activeRole === 'section_admin' || activeRole === 'super_admin';
-    if (roleIsCoach || (tab !== 'attendance' && tab !== 'schedule') || !attendanceBoard?.items?.length) {
-      return;
-    }
-
-    if (attendanceBoard.items.some((item) => item.childId === activeChildId)) {
-      return;
-    }
-
-    const fallbackChildId = attendanceBoard.items[0].childId;
-    setActiveChildId(fallbackChildId);
-
-    if (!accessToken) {
-      return;
-    }
-
-    void setContextSelection(accessToken, {
-      activeChildId: fallbackChildId,
-      activeSectionId: activeSectionId || undefined,
-    }).catch(() => {});
-  }, [activeRole, attendanceBoard, activeChildId, accessToken, activeSectionId, tab]);
-
   const activeChild = context?.children.find((child) => child.id === activeChildId) ?? context?.children[0];
   const activeSection = context?.sections.find((section) => section.id === activeSectionId) ?? context?.sections[0];
   const isCoachView = activeRole === 'coach' || activeRole === 'section_admin' || activeRole === 'super_admin';
@@ -751,7 +728,7 @@ export default function PwaShell() {
 
     childCarouselTimerRef.current = window.setTimeout(() => {
       syncActiveChildFromCarousel();
-    }, 120);
+    }, 32);
   }
 
   async function handleTelegramLinkRequest() {

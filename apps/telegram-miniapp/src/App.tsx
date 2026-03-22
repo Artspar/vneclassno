@@ -568,29 +568,6 @@ export function App() {
     }
   }
 
-  useEffect(() => {
-    const roleIsCoach = activeRole === 'coach' || activeRole === 'section_admin' || activeRole === 'super_admin';
-    if (roleIsCoach || (tab !== 'attendance' && tab !== 'schedule') || !attendanceBoard?.items?.length) {
-      return;
-    }
-
-    if (attendanceBoard.items.some((item) => item.childId === activeChildId)) {
-      return;
-    }
-
-    const fallbackChildId = attendanceBoard.items[0].childId;
-    setActiveChildId(fallbackChildId);
-
-    if (!accessToken) {
-      return;
-    }
-
-    void setContextSelection(accessToken, {
-      activeChildId: fallbackChildId,
-      activeSectionId: activeSectionId || undefined,
-    }).catch(() => {});
-  }, [activeRole, attendanceBoard, activeChildId, accessToken, activeSectionId, tab]);
-
   const activeChild = context?.children.find((child) => child.id === activeChildId) ?? context?.children[0];
   const activeSection = context?.sections.find((section) => section.id === activeSectionId) ?? context?.sections[0];
   const hasChildren = (context?.children.length ?? 0) > 0;
@@ -757,7 +734,7 @@ export function App() {
 
     childCarouselTimerRef.current = window.setTimeout(() => {
       syncActiveChildFromCarousel();
-    }, 120);
+    }, 32);
   }
 
   async function handlePhoneLinkRequestOtp() {
