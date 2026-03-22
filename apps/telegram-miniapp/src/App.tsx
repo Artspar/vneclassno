@@ -840,7 +840,10 @@ export function App() {
                     onClick={() => void handleChildChange(child.id)}
                     aria-pressed={isActiveChild}
                   >
-                    {child.firstName}
+                    <span className="child-chip-avatar" aria-hidden="true">
+                      {`${child.firstName?.[0] ?? ''}${child.lastName?.[0] ?? ''}`.trim() || 'R'}
+                    </span>
+                    <span className="child-chip-name">{child.firstName}</span>
                   </button>
                 );
               })}
