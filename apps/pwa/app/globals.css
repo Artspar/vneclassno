@@ -71,6 +71,7 @@ h3 {
   margin: 0 auto;
   min-height: 100dvh;
   position: relative;
+  overflow-x: clip;
 }
 
 .modern-shell {
@@ -208,12 +209,15 @@ h3 {
   display: flex;
   gap: 14px;
   overflow-x: auto;
+  width: 100%;
   padding: 6px 20px 10px;
   margin: 6px 0 10px;
   max-width: 100%;
   scrollbar-width: none;
   scroll-snap-type: x mandatory;
   scroll-padding-inline: 20px;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -280,18 +284,23 @@ h3 {
 }
 
 .hero-carousel-wrap {
+  width: 100%;
   margin: 8px 0 6px;
+  overflow: hidden;
 }
 
 .hero-child-chip-row {
   margin: 0;
-  padding-top: 8px;
+  gap: 0;
+  padding: 8px 16px 10px;
+  scroll-padding-inline: 16px;
 }
 
 .hero-child-chip-row .child-chip {
-  min-width: calc(100vw - 76px);
-  width: calc(100vw - 76px);
-  max-width: 388px;
+  min-width: 100%;
+  width: 100%;
+  max-width: 100%;
+  scroll-snap-align: center;
 }
 
 
