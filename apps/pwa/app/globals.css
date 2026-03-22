@@ -96,12 +96,13 @@ h3 {
   min-height: 42px;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.46);
-  background: rgba(255, 255, 255, 0.26);
-  color: #ffffff;
+  background: rgba(255, 255, 255, 0.96);
+  color: #6f7b92;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0;
+  box-shadow: 0 8px 18px rgba(33, 44, 70, 0.18);
 }
 
 .logout-icon-btn svg {
@@ -175,6 +176,34 @@ h3 {
 
 
 
+
+.child-carousel-wrap {
+  margin: 0 0 8px;
+}
+
+.child-carousel-dots {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0 0;
+}
+
+.child-dot {
+  width: 7px;
+  height: 7px;
+  min-height: 7px;
+  border-radius: 999px;
+  border: 0;
+  background: rgba(255, 255, 255, 0.38);
+  padding: 0;
+}
+
+.child-dot.active {
+  width: 18px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
 .child-chip-row {
   display: flex;
   gap: 12px;
@@ -206,7 +235,7 @@ h3 {
   border-radius: 24px;
   border: 1px solid rgba(255, 255, 255, 0.34);
   background: rgba(255, 255, 255, 0.12);
-  color: #ffffff;
+  color: #6f7b92;
   padding: 16px 10px 10px;
   font-size: 14px;
   font-weight: 700;

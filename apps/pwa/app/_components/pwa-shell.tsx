@@ -790,24 +790,41 @@ export default function PwaShell() {
       </section>
 
       {!isCoachView && context.children.length > 0 && (
-        <div className="child-chip-row" role="tablist" aria-label="Дети">
-          {context.children.map((child) => {
-            const isActiveChild = child.id === activeChildId;
-            return (
-              <button
-                key={child.id}
-                type="button"
-                className={`child-chip ${isActiveChild ? 'active' : ''}`}
-                onClick={() => void handleChildChange(child.id)}
-                aria-pressed={isActiveChild}
-              >
-                <span className="child-chip-avatar" aria-hidden="true">
-                  {`${child.firstName?.[0] ?? ''}${child.lastName?.[0] ?? ''}`.trim() || 'R'}
-                </span>
-                <span className="child-chip-name">{child.firstName}</span>
-              </button>
-            );
-          })}
+        <div className="child-carousel-wrap">
+          <div className="child-chip-row" role="tablist" aria-label="Дети">
+            {context.children.map((child) => {
+              const isActiveChild = child.id === activeChildId;
+              return (
+                <button
+                  key={child.id}
+                  type="button"
+                  className={`child-chip ${isActiveChild ? 'active' : ''}`}
+                  onClick={() => void handleChildChange(child.id)}
+                  aria-pressed={isActiveChild}
+                >
+                  <span className="child-chip-avatar" aria-hidden="true">
+                    {`${child.firstName?.[0] ?? ''}${child.lastName?.[0] ?? ''}`.trim() || 'R'}
+                  </span>
+                  <span className="child-chip-name">{child.firstName}</span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="child-carousel-dots" aria-label="Пагинация детей">
+            {context.children.map((child) => {
+              const isActiveChild = child.id === activeChildId;
+              return (
+                <button
+                  key={`dot-${child.id}`}
+                  type="button"
+                  className={`child-dot ${isActiveChild ? 'active' : ''}`}
+                  onClick={() => void handleChildChange(child.id)}
+                  aria-label={`Выбрать ${child.firstName}`}
+                  aria-pressed={isActiveChild}
+                />
+              );
+            })}
+          </div>
         </div>
       )}
 
